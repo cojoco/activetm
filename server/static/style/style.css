@@ -1,0 +1,16 @@
+#mapBase {
+  z-index: 0;
+  width: 800px;
+  height: 800px;
+  -webkit-border-radius: 100%;
+  -moz-border-radius: 100%;
+  border-radius: 100%;
+  border: 1px solid black;
+}
+
+#testDoc {
+  position: absolute;
+  left: 200px;
+  top: 200px;
+  z-index: 1;
+}

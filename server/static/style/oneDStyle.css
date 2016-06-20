@@ -1,0 +1,18 @@
+#mapBase {
+  z-index: 0;
+  width: 900px;
+  height: 200px;
+}
+
+#lineBase {
+  z-index: 0;
+  stroke: black;
+  stroke-width: 2;
+}
+
+#testDoc {
+  position: absolute;
+  left: 200px;
+  top: 200px;
+  z-index: 1;
+}

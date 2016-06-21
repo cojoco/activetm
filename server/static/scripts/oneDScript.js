@@ -16,34 +16,29 @@ $(document).ready(function() {
     })
   }
 
-  $("#docButton").click(function(ev) {
-    $.ajax({
-      url: '/getdoc',
-      headers: {'uuid': Cookies.get('uuid')},
-      success: function(data) {
-        Cookies.set('doc_number', data['doc_number'])
-        console.log(data)
-      }
-    })
-  })
+  //Transforms a label (between 0 and 1) to a line position (between 0 and 1000)
+  function labelToLine(label) {
+    var lineLength = maxX - minX
+    return label * lineLength
+  }
 
-  $("#testDoc").draggable({
-    containment: 'parent',
-    cursor: 'move',
-    stop: docDragHandler
-  })
+  //Transforms a line position (between 0 and 1000) to a label (between 0 and 1)
+  function lineToLabel(line) {
+    var lineLength = maxX - minX
+    return line / lineLength
+  }
 
-  function docDragHandler( event, ui ) {
-    var offsetXPos = parseInt(ui.offset.left) - $(".container").offset().left
-    var offsetYPos = parseInt(ui.offset.top)
+  $("#mapBase").click(lineClickHandler)
+
+  // Handles a document being labeled by a click on the line
+  function lineClickHandler(event) {
+    var offsetXPos = parseInt(event.pageX) - $(".container").offset().left + 0.5
+    var offsetYPos = parseInt(event.pageY)
+    console.log(offsetXPos + " " + minX)
     if (offsetXPos >= minX && offsetXPos < maxX &&
         offsetYPos >= minY && offsetYPos < maxY) {
       //Normalize the label to a value between 0 and 1 to send back
-      console.log("offsetXPos: " + offsetXPos)
-      console.log("minX: " + minX + " maxX: " + maxX)
-      var lineLeft = Number($("#lineBase").attr("x1"))
-      var lineRight = Number($("#lineBase").attr("x2"))
-      var label = (offsetXPos - lineLeft)/(lineRight - lineLeft)
+      var label = lineToLabel(offsetXPos)
       $.ajax({
         url: '/labeldoc',
         method: 'POST',
@@ -52,7 +47,15 @@ $(document).ready(function() {
                'label': label
               },
         success: function(data) {
-          console.log("labeled a document")
+          // Should only get a new document if we're supposed to keep going,
+          //   that's not in here yet though.
+          $.ajax({
+            url: '/getdoc',
+            headers: {'uuid': Cookies.get('uuid')},
+            success: function(data) {
+              Cookies.set('doc_number', data['doc_number'])
+            }
+          })
         }
       })
     } 

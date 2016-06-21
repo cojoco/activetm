@@ -68,7 +68,9 @@ def get_uid():
     data = {'id': uid}
     with LOCK:
         USER_DICT[str(uid)] = {
-            'current_doc': -1
+            'current_doc': -1,
+            # This is a doc_number to label mapping
+            'docs_with_labels': {}
         }
         save_state()
     return flask.jsonify(data)
@@ -80,6 +82,10 @@ def label_doc():
     user_id = flask.request.headers.get('uuid')
     doc_number = flask.request.values.get('doc_number')
     label = flask.request.values.get('label')
+    with LOCK:
+        if user_id in USER_DICT:
+            USER_DICT[str(user_id)]['current_doc'] = -1
+            USER_DICT[str(user_id)]['docs_with_labels'][doc_number] = label
     print("doc_number: ", doc_number, " label: ", label)
     return flask.jsonify(user_id=user_id)
 
@@ -92,8 +98,10 @@ def get_doc():
     document = ''
     with LOCK:
         if user_id in USER_DICT:
+            print("user_id in USER_DICT")
             # do what we need to get the right document for this user
-            pass
+            doc_number = RNG.randint(0, 10)
+            document = 'document ' + str(doc_number)
     return flask.jsonify(document=document, doc_number=doc_number)
 
 

@@ -7,8 +7,8 @@ $(document).ready(function() {
   // Get info on the line's position to use to place the documents
   var minX = Number($("#lineBase").attr("x1"))
   var maxX = Number($("#lineBase").attr("x2"))
-  var minY = Number($("#lineBase").attr("y1"))-30
-  var maxY = minY + 36
+  var minY = Number($("#lineBase").attr("y1"))-15
+  var maxY = minY + 30
 
   if (Cookies.get('uuid') === undefined) {
     $.get('/uuid', function(data) {
@@ -54,6 +54,7 @@ $(document).ready(function() {
             headers: {'uuid': Cookies.get('uuid')},
             success: function(data) {
               Cookies.set('doc_number', data['doc_number'])
+              $("#docText").text(data['document'])
             }
           })
         }

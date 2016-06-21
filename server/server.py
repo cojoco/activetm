@@ -7,6 +7,14 @@ import uuid
 import threading
 import pickle
 import random
+import sys
+
+sys.path.append('/local/cojoco/metadataMap')
+
+from activetm.active import evaluate
+from activetm.active import select
+from activetm import models
+from activetm import utils
 
 APP = flask.Flask(__name__, static_url_path='')
 
@@ -30,6 +38,8 @@ def get_user_dict_on_start():
 # Everything in this block needs to be run at server startup
 # USER_DICT holds information for individual users
 USER_DICT = get_user_dict_on_start()
+# MODELS holds the model for each user
+MODELS = {}
 LOCK = threading.Lock()
 RNG = random.Random()
 ###############################################################################
@@ -39,7 +49,6 @@ def save_state():
     """Saves the state of the server to a pickle file"""
     last_state = {}
     last_state['USER_DICT'] = USER_DICT
-    print(USER_DICT)
     pickle.dump(last_state, open('last_state.pickle', 'wb'))
 
 
@@ -61,11 +70,18 @@ def serve_end():
     return flask.send_from_directory('static', 'end.html')
 
 
+def build_model():
+    """Builds a model for a user"""
+    
+
+
 @APP.route('/uuid')
 def get_uid():
     """Sends a UUID to the client"""
     uid = uuid.uuid4()
     data = {'id': uid}
+    # Create a model here
+    MODELS[str(uid)] = build_model()
     with LOCK:
         USER_DICT[str(uid)] = {
             'current_doc': -1,
@@ -86,7 +102,9 @@ def label_doc():
         if user_id in USER_DICT:
             USER_DICT[str(user_id)]['current_doc'] = -1
             USER_DICT[str(user_id)]['docs_with_labels'][doc_number] = label
+            # Add the newly labeled document to the model
     print("doc_number: ", doc_number, " label: ", label)
+    save_state()
     return flask.jsonify(user_id=user_id)
 
 
@@ -98,10 +116,11 @@ def get_doc():
     document = ''
     with LOCK:
         if user_id in USER_DICT:
-            print("user_id in USER_DICT")
             # do what we need to get the right document for this user
             doc_number = RNG.randint(0, 10)
-            document = 'document ' + str(doc_number)
+            document = 'document' + str(doc_number)
+            USER_DICT[str(user_id)]['current_doc'] = doc_number
+    save_state()
     return flask.jsonify(document=document, doc_number=doc_number)
 
 

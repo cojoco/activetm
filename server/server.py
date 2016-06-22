@@ -115,6 +115,7 @@ def get_doc():
     doc_number = -1
     document = ''
     with LOCK:
+        print(user_id, USER_DICT)
         if user_id in USER_DICT:
             # do what we need to get the right document for this user
             doc_number = RNG.randint(0, 10)

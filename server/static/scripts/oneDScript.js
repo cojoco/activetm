@@ -34,7 +34,6 @@ $(document).ready(function() {
   function lineClickHandler(event) {
     var offsetXPos = parseInt(event.pageX) - $(".container").offset().left + 0.5
     var offsetYPos = parseInt(event.pageY)
-    console.log(offsetXPos + " " + minX)
     if (offsetXPos >= minX && offsetXPos < maxX &&
         offsetYPos >= minY && offsetYPos < maxY) {
       //Normalize the label to a value between 0 and 1 to send back

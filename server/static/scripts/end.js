@@ -1,5 +1,9 @@
 $(document).ready(function() {
   if (!document.hidden) {
-    Cookies.remove('uuid');
+    $.ajax({
+        url: '/removeuser',
+        headers: {'uuid': Cookies.get('uuid')}
+    })
+    Cookies.remove('uuid')
   }
 })

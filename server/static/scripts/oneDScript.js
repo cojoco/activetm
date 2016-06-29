@@ -13,6 +13,24 @@ $(document).ready(function() {
   if (Cookies.get('uuid') === undefined) {
     $.get('/uuid', function(data) {
       Cookies.set('uuid', data['id'])
+      $.ajax({
+        url: '/getdoc',
+        headers: {'uuid': Cookies.get('uuid')},
+        success: function(data) {
+          Cookies.set('doc_number', data['doc_number'])
+          $("#docText").text(data['document'])
+        }
+      })
+    })
+  }
+  else {
+    $.ajax({
+      url: '/olddoc',
+      headers: {'uuid': Cookies.get('uuid'),
+                'doc_number': Cookies.get('doc_number')},
+      success: function(data) {
+        $("#docText").text(data['document'])
+      }
     })
   }
 

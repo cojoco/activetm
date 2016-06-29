@@ -34,6 +34,13 @@ def get_user_dict_on_start():
     return {}
 
 
+def get_dataset():
+    """Gets the dataset from a pickle file in the local directory"""
+    with open('dataset.pickle', 'rb') as in_file:
+        dataset = pickle.load(in_file)
+        return dataset
+
+
 ###############################################################################
 # Everything in this block needs to be run at server startup
 # USER_DICT holds information for individual users
@@ -42,6 +49,7 @@ USER_DICT = get_user_dict_on_start()
 MODELS = {}
 LOCK = threading.Lock()
 RNG = random.Random()
+DATASET = get_dataset()
 ###############################################################################
 
 
@@ -55,6 +63,7 @@ def save_state():
 @APP.route('/')
 def serve_landing_page():
     """Serves the landing page for the Metadata Map UI"""
+    print(DATASET)
     return flask.send_from_directory('static', 'index.html')
 
 
@@ -70,9 +79,23 @@ def serve_end():
     return flask.send_from_directory('static', 'end.html')
 
 
+@APP.route('/removeuser')
+def remove_user():
+    """Removes a user, called when a user goes to end.html"""
+    user_id = flask.request.headers.get('uuid')
+    print('user_id is', user_id)
+    del USER_DICT[str(user_id)]
+    print('USER_DICT is now', USER_DICT)
+    return flask.jsonify({})
+
+
 def build_model():
     """Builds a model for a user"""
-    
+    settings = {}
+    settings['model'] = 'ridge_anchor'
+    settings['numtopics'] = 20
+    settings['numtrain'] = 1
+    return models.build(RNG, settings)
 
 
 @APP.route('/uuid')
@@ -100,7 +123,6 @@ def label_doc():
     label = flask.request.values.get('label')
     with LOCK:
         if user_id in USER_DICT:
-            USER_DICT[str(user_id)]['current_doc'] = -1
             USER_DICT[str(user_id)]['docs_with_labels'][doc_number] = label
             # Add the newly labeled document to the model
     print("doc_number: ", doc_number, " label: ", label)
@@ -116,13 +138,21 @@ def get_doc():
     document = ''
     with LOCK:
         print(user_id, USER_DICT)
-        if user_id in USER_DICT:
+        if str(user_id) in USER_DICT:
             # do what we need to get the right document for this user
-            doc_number = RNG.randint(0, 10)
-            document = 'document' + str(doc_number)
+            doc_number = USER_DICT[str(user_id)]['current_doc'] + 1
+            document = DATASET.doc_metadata(doc_number, 'text')
             USER_DICT[str(user_id)]['current_doc'] = doc_number
     save_state()
     return flask.jsonify(document=document, doc_number=doc_number)
+
+@APP.route('/olddoc')
+def old_doc():
+    """Gets old document text for a user if they reconnect"""
+    user_id = flask.request.headers.get('uuid')
+    doc_number = flask.request.headers.get('doc_number')
+    document = DATASET.doc_metadata(doc_number, 'text')
+    return flask.jsonify(document=document)
 
 
 if __name__ == '__main__':

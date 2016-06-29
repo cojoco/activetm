@@ -83,9 +83,8 @@ def serve_end():
 def remove_user():
     """Removes a user, called when a user goes to end.html"""
     user_id = flask.request.headers.get('uuid')
-    print('user_id is', user_id)
-    del USER_DICT[str(user_id)]
-    print('USER_DICT is now', USER_DICT)
+    if str(user_id) in USER_DICT:
+        del USER_DICT[str(user_id)]
     return flask.jsonify({})
 
 
@@ -122,7 +121,7 @@ def label_doc():
     doc_number = flask.request.values.get('doc_number')
     label = flask.request.values.get('label')
     with LOCK:
-        if user_id in USER_DICT:
+        if str(user_id) in USER_DICT:
             USER_DICT[str(user_id)]['docs_with_labels'][doc_number] = label
             # Add the newly labeled document to the model
     print("doc_number: ", doc_number, " label: ", label)
@@ -137,7 +136,6 @@ def get_doc():
     doc_number = -1
     document = ''
     with LOCK:
-        print(user_id, USER_DICT)
         if str(user_id) in USER_DICT:
             # do what we need to get the right document for this user
             doc_number = USER_DICT[str(user_id)]['current_doc'] + 1

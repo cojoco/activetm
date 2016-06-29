@@ -10,14 +10,14 @@ $(document).ready(function() {
   var minY = Number($("#lineBase").attr("y1"))-15
   var maxY = minY + 30
 
-  if (Cookies.get('uuid') === undefined) {
+  if (Cookies.get('mdm_uuid') === undefined) {
     $.get('/uuid', function(data) {
-      Cookies.set('uuid', data['id'])
+      Cookies.set('mdm_uuid', data['id'])
       $.ajax({
         url: '/getdoc',
-        headers: {'uuid': Cookies.get('uuid')},
+        headers: {'uuid': Cookies.get('mdm_uuid')},
         success: function(data) {
-          Cookies.set('doc_number', data['doc_number'])
+          Cookies.set('mdm_doc_number', data['doc_number'])
           $("#docText").text(data['document'])
         }
       })
@@ -26,8 +26,8 @@ $(document).ready(function() {
   else {
     $.ajax({
       url: '/olddoc',
-      headers: {'uuid': Cookies.get('uuid'),
-                'doc_number': Cookies.get('doc_number')},
+      headers: {'uuid': Cookies.get('mdm_uuid'),
+                'doc_number': Cookies.get('mdm_doc_number')},
       success: function(data) {
         $("#docText").text(data['document'])
       }
@@ -59,8 +59,8 @@ $(document).ready(function() {
       $.ajax({
         url: '/labeldoc',
         method: 'POST',
-        headers: {'uuid': Cookies.get('uuid')},
-        data: {'doc_number': Cookies.get('doc_number'),
+        headers: {'uuid': Cookies.get('mdm_uuid')},
+        data: {'doc_number': Cookies.get('mdm_doc_number'),
                'label': label
               },
         success: function(data) {
@@ -68,9 +68,9 @@ $(document).ready(function() {
           //   that's not in here yet though.
           $.ajax({
             url: '/getdoc',
-            headers: {'uuid': Cookies.get('uuid')},
+            headers: {'uuid': Cookies.get('mdm_uuid')},
             success: function(data) {
-              Cookies.set('doc_number', data['doc_number'])
+              Cookies.set('mdm_doc_number', data['doc_number'])
               $("#docText").text(data['document'])
             }
           })

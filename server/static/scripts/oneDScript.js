@@ -69,9 +69,9 @@ $(document).ready(function() {
           $.ajax({
             url: '/getdoc',
             headers: {'uuid': Cookies.get('mdm_uuid')},
-            success: function(data) {
-              Cookies.set('mdm_doc_number', data['doc_number'])
-              $("#docText").text(data['document'])
+            success: function(docData) {
+              Cookies.set('mdm_doc_number', docData['doc_number'])
+              $("#docText").text(docData['document'])
             }
           })
         }

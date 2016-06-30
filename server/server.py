@@ -42,14 +42,17 @@ def get_dataset():
 
 
 ###############################################################################
-# Everything in this block needs to be run at server startup
 # USER_DICT holds information for individual users
 USER_DICT = get_user_dict_on_start()
 # MODELS holds the model for each user
 MODELS = {}
+SELECT_METHOD = select.factory['random']
+CAND_SIZE = 500
+LABEL_INCREMENT = 1
 LOCK = threading.Lock()
 RNG = random.Random()
 DATASET = get_dataset()
+ALL_DOC_IDS = [doc for doc in range(DATASET.num_docs)]
 ###############################################################################
 
 
@@ -108,7 +111,9 @@ def get_uid():
         USER_DICT[str(uid)] = {
             'current_doc': -1,
             # This is a doc_number to label mapping
-            'docs_with_labels': {}
+            'docs_with_labels': {},
+            'labeled_doc_ids': [],
+            'unlabeled_doc_ids': list(ALL_DOC_IDS)
         }
         save_state()
     return flask.jsonify(data)
@@ -123,8 +128,9 @@ def label_doc():
     with LOCK:
         if str(user_id) in USER_DICT:
             USER_DICT[str(user_id)]['docs_with_labels'][doc_number] = label
+            USER_DICT[str(user_id)]['labeled_doc_ids'].append(doc_number)
+            USER_DICT[str(user_id)]['unlabeled_doc_ids'].remove(int(doc_number))
             # Add the newly labeled document to the model
-    print("doc_number: ", doc_number, " label: ", label)
     save_state()
     return flask.jsonify(user_id=user_id)
 
@@ -138,9 +144,14 @@ def get_doc():
     with LOCK:
         if str(user_id) in USER_DICT:
             # do what we need to get the right document for this user
-            doc_number = USER_DICT[str(user_id)]['current_doc'] + 1
+            labeled_doc_ids = USER_DICT[str(user_id)]['labeled_doc_ids']
+            unlabeled_doc_ids = USER_DICT[str(user_id)]['unlabeled_doc_ids']
+            candidates = select.reservoir(unlabeled_doc_ids, RNG, CAND_SIZE)
+            doc_number = SELECT_METHOD(DATASET, labeled_doc_ids, candidates,
+                        MODELS[str(user_id)], RNG, LABEL_INCREMENT)[0] 
             document = DATASET.doc_metadata(doc_number, 'text')
             USER_DICT[str(user_id)]['current_doc'] = doc_number
+            print("doc_number:", doc_number)
     save_state()
     return flask.jsonify(document=document, doc_number=doc_number)
 
@@ -149,7 +160,7 @@ def old_doc():
     """Gets old document text for a user if they reconnect"""
     user_id = flask.request.headers.get('uuid')
     doc_number = flask.request.headers.get('doc_number')
-    document = DATASET.doc_metadata(doc_number, 'text')
+    document = DATASET.doc_metadata(int(doc_number), 'text')
     return flask.jsonify(document=document)
 
 

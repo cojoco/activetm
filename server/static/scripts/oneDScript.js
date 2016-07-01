@@ -56,6 +56,7 @@ $(document).ready(function() {
         offsetYPos >= minY && offsetYPos < maxY) {
       //Normalize the label to a value between 0 and 1 to send back
       var label = lineToLabel(offsetXPos)
+      //TODO: Maybe begin spinning circle here, in case training takes a while
       $.ajax({
         url: '/labeldoc',
         method: 'POST',
@@ -70,6 +71,7 @@ $(document).ready(function() {
             url: '/getdoc',
             headers: {'uuid': Cookies.get('mdm_uuid')},
             success: function(docData) {
+              //TODO: End spinning circle here, since we're done training
               Cookies.set('mdm_doc_number', docData['doc_number'])
               $("#docText").text(docData['document'])
             }

@@ -85,9 +85,9 @@ def serve_end():
 @APP.route('/removeuser')
 def remove_user():
     """Removes a user, called when a user goes to end.html"""
-    user_id = flask.request.headers.get('uuid')
-    if str(user_id) in USER_DICT:
-        del USER_DICT[str(user_id)]
+    uid = str(flask.request.headers.get('uuid'))
+    if uid in USER_DICT:
+        del USER_DICT[uid]
     return flask.jsonify({})
 
 
@@ -103,12 +103,12 @@ def build_model():
 @APP.route('/uuid')
 def get_uid():
     """Sends a UUID to the client"""
-    uid = uuid.uuid4()
+    uid = str(uuid.uuid4())
     data = {'id': uid}
     # Create a model here
-    MODELS[str(uid)] = build_model()
+    MODELS[uid] = build_model()
     with LOCK:
-        USER_DICT[str(uid)] = {
+        USER_DICT[uid] = {
             'current_doc': -1,
             # This is a doc_number to label mapping
             'docs_with_labels': {},
@@ -122,35 +122,44 @@ def get_uid():
 @APP.route('/labeldoc', methods=['POST'])
 def label_doc():
     """Receives the label for the previously sent document"""
-    user_id = flask.request.headers.get('uuid')
-    doc_number = flask.request.values.get('doc_number')
-    label = flask.request.values.get('label')
+    uid = str(flask.request.headers.get('uuid'))
+    doc_number = int(flask.request.values.get('doc_number'))
+    label = float(flask.request.values.get('label'))
     with LOCK:
-        if str(user_id) in USER_DICT:
-            USER_DICT[str(user_id)]['docs_with_labels'][doc_number] = label
-            USER_DICT[str(user_id)]['labeled_doc_ids'].append(doc_number)
-            USER_DICT[str(user_id)]['unlabeled_doc_ids'].remove(int(doc_number))
-            # Add the newly labeled document to the model
+        if uid in USER_DICT:
+            USER_DICT[uid]['docs_with_labels'][doc_number] = label
+            USER_DICT[uid]['labeled_doc_ids'].append(doc_number)
+            USER_DICT[uid]['unlabeled_doc_ids'].remove(doc_number)
+            num_labeled_ids = len(USER_DICT[uid]['labeled_doc_ids'])
+            # Train at 20, 30, 40, 50... documents labeled
+            if num_labeled_ids >= 20 and num_labeled_ids % 10 == 0:
+                labeled_doc_ids = []
+                known_labels = []
+                for doc_id, label in USER_DICT[uid]['docs_with_labels'].items():
+                    labeled_doc_ids.append(doc_id)
+                    known_labels.append(label)
+                MODELS[uid].train(DATASET, labeled_doc_ids, known_labels, True)
     save_state()
-    return flask.jsonify(user_id=user_id)
+    return flask.jsonify(user_id=uid)
 
 
 @APP.route('/getdoc')
 def get_doc():
     """Gets the next document for this user"""
-    user_id = flask.request.headers.get('uuid')
+    uid = str(flask.request.headers.get('uuid'))
+    print(uid)
     doc_number = -1
     document = ''
     with LOCK:
-        if str(user_id) in USER_DICT:
+        if uid in USER_DICT:
             # do what we need to get the right document for this user
-            labeled_doc_ids = USER_DICT[str(user_id)]['labeled_doc_ids']
-            unlabeled_doc_ids = USER_DICT[str(user_id)]['unlabeled_doc_ids']
+            labeled_doc_ids = USER_DICT[uid]['labeled_doc_ids']
+            unlabeled_doc_ids = USER_DICT[uid]['unlabeled_doc_ids']
             candidates = select.reservoir(unlabeled_doc_ids, RNG, CAND_SIZE)
             doc_number = SELECT_METHOD(DATASET, labeled_doc_ids, candidates,
-                        MODELS[str(user_id)], RNG, LABEL_INCREMENT)[0] 
+                        MODELS[uid], RNG, LABEL_INCREMENT)[0] 
             document = DATASET.doc_metadata(doc_number, 'text')
-            USER_DICT[str(user_id)]['current_doc'] = doc_number
+            USER_DICT[uid]['current_doc'] = doc_number
             print("doc_number:", doc_number)
     save_state()
     return flask.jsonify(document=document, doc_number=doc_number)
@@ -158,9 +167,9 @@ def get_doc():
 @APP.route('/olddoc')
 def old_doc():
     """Gets old document text for a user if they reconnect"""
-    user_id = flask.request.headers.get('uuid')
-    doc_number = flask.request.headers.get('doc_number')
-    document = DATASET.doc_metadata(int(doc_number), 'text')
+    uid = str(flask.request.headers.get('uuid'))
+    doc_number = int(flask.request.headers.get('doc_number'))
+    document = DATASET.doc_metadata(doc_number, 'text')
     return flask.jsonify(document=document)
 
 

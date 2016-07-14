@@ -135,6 +135,11 @@ class AbstractAnchor(abstract.AbstractModel):
             self.predictors.append(predictor)
 
     def predict(self, doc):
+        """Returns the predicted value for the doc passed in.
+
+        doc: list of tokens in the document, as returned by
+             'dataset.doc_tokens(doc_id)'
+        """
         resultslist = []
         docws = self._convert_vocab_space(doc)
         if len(docws) <= 0:
@@ -262,8 +267,9 @@ class AbstractGPAnchor(AbstractAnchor):
         uncertainties = []
         for i in range(self.numtrain):
             uncertainties.append(
-                self.predictors[i](
-                    self._predict_topics(i, docws), return_std=True)[1][0])
+                self.predictors[i].predict(
+                    self._predict_topics(i, docws).reshape(1, -1),
+                    return_std=True)[1][0])
         return np.mean(uncertainties)
 
 

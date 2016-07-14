@@ -27,7 +27,7 @@ def get_user_dict_on_start():
         print('No last_state.pickle file, assuming no previous state')
     else:
         state = pickle.load(last_state)
-        print("Last state: " + str(state))
+        print('last_state.pickle file loaded')
         last_state.close()
         return state['USER_DICT']
     # but if the server is starting fresh, so does the user data
@@ -49,6 +49,16 @@ MODELS = {}
 SELECT_METHOD = select.factory['random']
 CAND_SIZE = 500
 LABEL_INCREMENT = 1
+
+# Start training after START_TRAINING labeled documents
+START_TRAINING = 20
+# Train every TRAINING_INCREMENT labeled documents after START_TRAINING
+TRAINING_INCREMENT = 10
+
+# Label and uncertainty if we don't have a trained model
+BASE_LABEL = 0.5
+BASE_UNCERTAINTY = 0.5
+
 LOCK = threading.Lock()
 RNG = random.Random()
 DATASET = get_dataset()
@@ -66,7 +76,6 @@ def save_state():
 @APP.route('/')
 def serve_landing_page():
     """Serves the landing page for the Metadata Map UI"""
-    print(DATASET)
     return flask.send_from_directory('static', 'index.html')
 
 
@@ -94,10 +103,32 @@ def remove_user():
 def build_model():
     """Builds a model for a user"""
     settings = {}
-    settings['model'] = 'ridge_anchor'
+    settings['model'] = 'semi_ridge_anchor'
     settings['numtopics'] = 20
     settings['numtrain'] = 1
     return models.build(RNG, settings)
+
+
+def train_model(uid):
+    restarted = False
+    # If uid is not in MODELS, it means the server restarted and we may
+    #   need to retrain the model if it was trained before the restart
+    with LOCK:
+        if uid not in MODELS:
+            MODELS[uid] = build_model()
+            restarted = True
+        num_labeled_ids = len(USER_DICT[uid]['labeled_doc_ids'])
+        # Train at 20, 30, 40, 50... documents labeled
+        if (num_labeled_ids >= START_TRAINING and
+        (restarted or num_labeled_ids % TRAINING_INCREMENT == 0)):
+            USER_DICT[uid]['training_complete'] = False
+            labeled_doc_ids = []
+            known_labels = []
+            for doc_id, label in USER_DICT[uid]['docs_with_labels'].items():
+                labeled_doc_ids.append(doc_id)
+                known_labels.append(label)
+            MODELS[uid].train(DATASET, labeled_doc_ids, known_labels, True)
+            USER_DICT[uid]['training_complete'] = True
 
 
 @APP.route('/uuid')
@@ -113,7 +144,8 @@ def get_uid():
             # This is a doc_number to label mapping
             'docs_with_labels': {},
             'labeled_doc_ids': [],
-            'unlabeled_doc_ids': list(ALL_DOC_IDS)
+            'unlabeled_doc_ids': list(ALL_DOC_IDS),
+            'training_complete': False
         }
         save_state()
     return flask.jsonify(data)
@@ -127,18 +159,13 @@ def label_doc():
     label = float(flask.request.values.get('label'))
     with LOCK:
         if uid in USER_DICT:
+            # If this endpoint was hit multiple times (say while the model was
+            #   training), then we want to only act on the first request
+            if doc_number in USER_DICT[uid]['labeled_doc_ids']:
+                return flask.jsonify(user_id=uid)
             USER_DICT[uid]['docs_with_labels'][doc_number] = label
             USER_DICT[uid]['labeled_doc_ids'].append(doc_number)
             USER_DICT[uid]['unlabeled_doc_ids'].remove(doc_number)
-            num_labeled_ids = len(USER_DICT[uid]['labeled_doc_ids'])
-            # Train at 20, 30, 40, 50... documents labeled
-            if num_labeled_ids >= 20 and num_labeled_ids % 10 == 0:
-                labeled_doc_ids = []
-                known_labels = []
-                for doc_id, label in USER_DICT[uid]['docs_with_labels'].items():
-                    labeled_doc_ids.append(doc_id)
-                    known_labels.append(label)
-                MODELS[uid].train(DATASET, labeled_doc_ids, known_labels, True)
     save_state()
     return flask.jsonify(user_id=uid)
 
@@ -147,9 +174,12 @@ def label_doc():
 def get_doc():
     """Gets the next document for this user"""
     uid = str(flask.request.headers.get('uuid'))
-    print(uid)
     doc_number = -1
     document = ''
+    predicted_label = BASE_LABEL
+    uncertainty = BASE_UNCERTAINTY
+    if uid not in MODELS:
+        train_model(uid)
     with LOCK:
         if uid in USER_DICT:
             # do what we need to get the right document for this user
@@ -160,9 +190,24 @@ def get_doc():
                         MODELS[uid], RNG, LABEL_INCREMENT)[0] 
             document = DATASET.doc_metadata(doc_number, 'text')
             USER_DICT[uid]['current_doc'] = doc_number
-            print("doc_number:", doc_number)
+            if (len(labeled_doc_ids) >= START_TRAINING and
+            USER_DICT[uid]['training_complete'] is True):
+                doc = DATASET.doc_tokens(doc_number)
+                predicted_label = MODELS[uid].predict(doc)
+                uncertainty = MODELS[uid].get_uncertainty(doc)
     save_state()
-    return flask.jsonify(document=document, doc_number=doc_number)
+    return flask.jsonify(document=document, doc_number=doc_number,
+                         predicted_label=predicted_label,
+                         uncertainty=uncertainty)
+
+
+@APP.route('/train')
+def train_endpoint():
+    uid = str(flask.request.headers.get('uuid'))
+    if uid in USER_DICT:
+        train_model(uid)
+    return flask.jsonify({})
+
 
 @APP.route('/olddoc')
 def old_doc():
@@ -170,7 +215,18 @@ def old_doc():
     uid = str(flask.request.headers.get('uuid'))
     doc_number = int(flask.request.headers.get('doc_number'))
     document = DATASET.doc_metadata(doc_number, 'text')
-    return flask.jsonify(document=document)
+    predicted_label = BASE_LABEL
+    uncertainty = BASE_UNCERTAINTY
+    if uid not in MODELS:
+        train_model(uid)
+    with LOCK:
+        labeled_doc_ids = USER_DICT[uid]['labeled_doc_ids']
+        if len(labeled_doc_ids) >= START_TRAINING:
+            doc = DATASET.doc_tokens(doc_number)
+            predicted_label = MODELS[uid].predict(doc)
+            uncertainty = MODELS[uid].get_uncertainty(doc)
+    return flask.jsonify(document=document, predicted_label=predicted_label,
+                         uncertainty=uncertainty)
 
 
 if __name__ == '__main__':

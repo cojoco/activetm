@@ -39,6 +39,40 @@ $(document).ready(function() {
     })
   }
 
+  //Creates an SVG element in a way JQuery can work with it
+  function svg(tag) {
+    return document.createElementNS('http://www.w3.org/2000/svg', tag)
+  }
+
+  //Creates a document circle (this may not be small enough)
+  function makeDot(cx, cy, docNum) {
+    return $(svg('circle')).attr('id', 'doc' + docNum)
+                           .attr('class', 'docDot')
+                           .attr('cx', cx + '%')
+                           .attr('cy', cy)
+                           .attr('r', 2)
+                           .attr('stroke', 'black')
+                           .attr('stroke-width', 1)
+                           .attr('fill', 'black')
+  }
+
+  //List of dot bins, I'm arbitrarily saying there should be 200
+  var dotBins = new Array(200)
+
+  //Creating dots
+  // dotPlace: float, this is the % on the line (range [0,99])
+  // docNum: int, document number so we can map dots to documents
+  var makeNewDot = function makeNewDot(dotPlace, docNum) {
+    //We want this to be in the range [0.5, 99.5], so we add 0.5
+    var cx = dotPlace + 0.5
+    var cy = 98 - (4 * dotBins[dotPlace].length)
+    var newDot = makeDot(cx, cy, docNum)
+    $("#mapBase").append(newDot)
+  }
+
+  //For testing creating new dots
+  $("#newDotButton").on('click', makeNewDot)
+
   //Transforms a label (between 0 and 1) to a line position (between 0 and 1000)
   function labelToLine(label) {
     var lineLength = $("#lineContainer").width()

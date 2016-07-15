@@ -4,9 +4,6 @@ $(document).ready(function() {
                          top: '+=100px'})
   */
 
-  // Get info on the line's position to use to place the documents.
-  // Add 0.1 to minX to avoid division by zero errors.
-
   $("#waitContainer").hide()
 
   if (Cookies.get('mdm_uuid') === undefined) {
@@ -56,17 +53,19 @@ $(document).ready(function() {
                            .attr('fill', 'black')
   }
 
-  //List of dot bins, I'm arbitrarily saying there should be 200
-  var dotBins = new Array(200)
+  //List of dot bins, 0.5 to 99.5 every 0.5 increment
+  var dotBins = new Array(199)
+  for (var i = 0; i <= 99.5; i += 0.5) {
+    dotBins[i] = []
+  }
 
   //Creating dots
-  // dotPlace: float, this is the % on the line (range [0,99])
+  // dotPlace: float, this is the % on the line (range [0.5,99.5])
   // docNum: int, document number so we can map dots to documents
   var makeNewDot = function makeNewDot(dotPlace, docNum) {
-    //We want this to be in the range [0.5, 99.5], so we add 0.5
-    var cx = dotPlace + 0.5
     var cy = 98 - (4 * dotBins[dotPlace].length)
-    var newDot = makeDot(cx, cy, docNum)
+    dotBins[dotPlace].push(docNum)
+    var newDot = makeDot(dotPlace, cy, docNum)
     $("#mapBase").append(newDot)
   }
 
@@ -76,24 +75,53 @@ $(document).ready(function() {
   //Transforms a label (between 0 and 1) to a line position (between 0 and 1000)
   function labelToLine(label) {
     var lineLength = $("#lineContainer").width()
+    //Our predictor sometimes predicts outside [0,1), so we push those values
+    //  inside the valid range
+    if (label > 0.995) {
+      label = 0.995
+    }
+    if (label < 0.005) {
+      label = 0.005
+    }
     return label * lineLength
+  }
+
+  //Transforms a label to a dot position
+  function labelToDot(label) {
+    //We want the dot position to be [0.5,99.5] and divide cleanly by 0.5
+    if (label > 0.995) {
+      label = 99.5
+      return label
+    }
+    else if (label < 0.005) {
+      label = 0.5
+      return label
+    }
+    else {
+      label *= 100
+      //Get the label to be cleanly divisible by 0.5
+      if (label % 0.5 != 0) {
+        label -= label % 0.5
+      }
+      return label
+    }
   }
 
   //Transforms a line position (between 0 and 1000) to a label (between 0 and 1)
   function lineToLabel(line) {
     var lineLength = $("#lineContainer").width()
     //We want to avoid exactly 0 and exactly 1
-    if (line === 0) { return (line + 0.01) / lineLength }
-    else if (line === lineLength) { return (line - 0.01) / lineLength }
+    if (line === 0) { return 0.01 / lineLength }
+    else if (line === lineLength) { return (lineLength - 0.01) / lineLength }
     else { return line / lineLength }
   }
 
-  //Gets the left offset of the container
+  //Gets the current left offset of the container
   function leftOffset() {
     return $("#lineContainer").offset().left
   }
 
-  //Gets the top offset of the container
+  //Gets the current top offset of the container
   function topOffset() {
     return $("#lineContainer").offset().top + 60
   }
@@ -111,6 +139,8 @@ $(document).ready(function() {
                                            topOffset()) {
       //Normalize the label to a value between 0 and 1 to send back
       var label = lineToLabel(offsetXPos - leftOffset())
+      var dotPosition = labelToDot(label)
+      makeNewDot(dotPosition, Cookies.get('mdm_doc_number'))
       //Show spinning circle until training is done (or until the server
       //  tells us we aren't training yet)
       $("#waitContainer").show()

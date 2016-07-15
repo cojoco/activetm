@@ -9,9 +9,7 @@ import pickle
 import random
 import sys
 
-# This is ugly/dirty/hackish... Fix it if you like.
-# You could probably just install activetm in your user library.
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir))
+sys.path.append('/local/cojoco/metadataMap')
 
 from activetm.active import evaluate
 from activetm.active import select
@@ -58,8 +56,8 @@ START_TRAINING = 20
 TRAINING_INCREMENT = 10
 
 # Label and uncertainty if we don't have a trained model
-BASE_LABEL = (0.5, 0.5)
-BASE_UNCERTAINTY = (0.5, 0.5)
+BASE_LABEL = 0.5
+BASE_UNCERTAINTY = 0.5
 
 LOCK = threading.Lock()
 RNG = random.Random()
@@ -79,6 +77,12 @@ def save_state():
 def serve_landing_page():
     """Serves the landing page for the Metadata Map UI"""
     return flask.send_from_directory('static', 'index.html')
+
+
+@APP.route('/oned')
+def serve_ui():
+    """Serves the Metadata Map one dimensional case UI"""
+    return flask.send_from_directory('static', 'onedimension.html')
 
 
 @APP.route('/end')

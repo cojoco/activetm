@@ -1,15 +1,17 @@
-.mapSide {
+.mapMeasure {
   stroke: black;
-  stroke-width: 2;
+  stroke-width: 1;
+  stroke-dasharray: 1, 2;
 }
 
 #mapBase {
   z-index: 0;
-  width: 90vw;
-  height: 90vw;
-  max-height: 90vh;
-  max-width: 90vh;
+  width: 80vw;
+  height: 80vw;
+  max-height: 80vh;
+  max-width: 80vh;
   margin: auto;
+  margin-top: 10px;
   position: absolute;
   top: 0;
   bottom: 0;
@@ -18,9 +20,18 @@
   border: 1px solid black;
 }
 
+#docContainer {
+  margin-top: 82vh;
+  width: 100%;
+}
+
+#docText a {
+  display: inline-block;
+}
+
+/* This is just in here so I remember animated element CSS
 #testDoc {
   position: absolute;
-  left: 200px;
-  top: 200px;
   z-index: 1;
 }
+*/

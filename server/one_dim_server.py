@@ -22,12 +22,12 @@ def get_user_dict_on_start():
     """Loads user data"""
     # This maintains state if the server crashes
     try:
-        last_state = open('last_state.pickle', 'rb')
+        last_state = open('last_state_oned.pickle', 'rb')
     except IOError:
-        print('No last_state.pickle file, assuming no previous state')
+        print('No last_state_oned.pickle file, assuming no previous state')
     else:
         state = pickle.load(last_state)
-        print('last_state.pickle file loaded')
+        print('last_state_oned.pickle file loaded')
         last_state.close()
         return state['USER_DICT']
     # but if the server is starting fresh, so does the user data
@@ -70,7 +70,7 @@ def save_state():
     """Saves the state of the server to a pickle file"""
     last_state = {}
     last_state['USER_DICT'] = USER_DICT
-    pickle.dump(last_state, open('last_state.pickle', 'wb'))
+    pickle.dump(last_state, open('last_state_oned.pickle', 'wb'))
 
 
 @APP.route('/')

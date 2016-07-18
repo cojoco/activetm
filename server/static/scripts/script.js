@@ -6,6 +6,18 @@ $(document).ready(function() {
 
   $("#waitContainer").hide()
 
+  function useDocData(data) {
+    Cookies.set('mdm_doc_number', data['doc_number'])
+    $("#docText").text(data['document'])
+    console.log("predicted_label_x is " + data['predicted_label_x'])
+    console.log("uncertainty_x is " + data['uncertainty_x'])
+    console.log("predicted_label_y is " + data['predicted_label_y'])
+    console.log("uncertainty_y is " + data['uncertainty_y'])
+    // Call this for old_doc endpoint case (it might train models, which
+    //   takes a while and thus necessitates the spinning wheel)
+    $("#waitContainer").hide()
+  }
+
 	//Get a new uuid and needed document info
   if (Cookies.get('mdm_uuid') === undefined) {
     $.get('/uuid', function(data) {
@@ -13,12 +25,7 @@ $(document).ready(function() {
       $.ajax({
         url: '/getdoc',
         headers: {'uuid': Cookies.get('mdm_uuid')},
-        success: function(data) {
-          Cookies.set('mdm_doc_number', data['doc_number'])
-          $("#docText").text(data['document'])
-          console.log("predicted_label is " + data['predicted_label'])
-          console.log("uncertainty is " + data['uncertainty'])
-        }
+        success: useDocData
       })
     })
   }
@@ -29,12 +36,7 @@ $(document).ready(function() {
       url: '/olddoc',
       headers: {'uuid': Cookies.get('mdm_uuid'),
                 'doc_number': Cookies.get('mdm_doc_number')},
-      success: function(data) {
-        $("#docText").text(data['document'])
-        console.log("predicted_label is " + data['predicted_label'])
-        console.log("uncertainty is " + data['uncertainty'])
-        $("#waitContainer").hide()
-      }
+      success: useDocData
     })
   }
 
@@ -92,7 +94,7 @@ $(document).ready(function() {
     else {
       label *= 100
       //Get the label to be cleanly divisible by 0.5
-			//TODO: Will this have any problems with float precision?
+      //TODO: Will this have any problems with float precision?
       if (label % 0.5 != 0) {
         label -= label % 0.5
       }
@@ -100,11 +102,12 @@ $(document).ready(function() {
     }
   }
 
-  //Transforms a line position (between 0 and lineLength) to a label (between 0 and 1)
+  //Transforms a line position (between 0 and lineLength) to a label
+  //  (between 0 and 1)
   function lineToLabel(line) {
     var lineLength = $("#lineContainer").width()
     //We want to avoid exactly 0 and exactly 1
-		//TODO: I'm not sure this is actually true, I don't think the processor cares
+    //TODO: I'm not sure this is actually true, I don't think the model cares
     if (line === 0) { return 0.01 / lineLength }
     else if (line === lineLength) { return (lineLength - 0.01) / lineLength }
     else { return line / lineLength }

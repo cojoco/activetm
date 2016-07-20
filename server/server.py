@@ -126,6 +126,9 @@ def train_model(uid):
                 # Labels are tuples, one value for horiz and one for vert
                 labels_one.append(label[0])
                 labels_two.append(label[1])
+            print('labeled_doc_ids',labeled_doc_ids)
+            print('labels_one',labels_one)
+            print('labels_two',labels_two)
             MODELS[uid][0].train(DATASET, labeled_doc_ids, labels_one, True)
             MODELS[uid][1].train(DATASET, labeled_doc_ids, labels_two, True)
             USER_DICT[uid]['training_complete'] = True
@@ -155,14 +158,15 @@ def label_doc():
     """Receives the label for the previously sent document"""
     uid = str(flask.request.headers.get('uuid'))
     doc_number = int(flask.request.values.get('doc_number'))
-    label = float(flask.request.values.get('label'))
+    label_x = float(flask.request.values.get('label_x'))
+    label_y = float(flask.request.values.get('label_y'))
     with LOCK:
         if uid in USER_DICT:
             # If this endpoint was hit multiple times (say while the model was
             #   training), then we want to only act on the first request
             if doc_number in USER_DICT[uid]['docs_with_labels'].keys():
                 return flask.jsonify(user_id=uid)
-            USER_DICT[uid]['docs_with_labels'][doc_number] = label
+            USER_DICT[uid]['docs_with_labels'][doc_number] = (label_x, label_y)
             USER_DICT[uid]['unlabeled_doc_ids'].remove(doc_number)
     save_state()
     return flask.jsonify(user_id=uid)

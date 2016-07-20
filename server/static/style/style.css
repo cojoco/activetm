@@ -1,15 +1,16 @@
 .mapMeasure {
-  stroke: black;
+  stroke: white;
   stroke-width: 1;
   stroke-dasharray: 1, 2;
 }
 
 .dot {
-  fill: gray;
-  stroke: gray;
+  fill: white;
+  stroke: white;
   stroke-width: 0.1%;
-  stroke-opacity: 0.2;
-  fill-opacity: 0.2;
+  stroke-opacity: 0.1;
+  fill-opacity: 0.1;
+  z-index: 2;
 }
 
 #mapBase {
@@ -27,7 +28,6 @@
   right: 0;
   border: 1px solid black;
   background-color: black;
-  fill: black;
 }
 
 #docContainer {
@@ -37,6 +37,23 @@
 
 #docText a {
   display: inline-block;
+}
+
+#waitContainer {
+  position: absolute;
+  background-color: gray;
+  opacity: 0.8;
+  width: 100vw;
+  height: 100vh;
+  z-index: 99;
+}
+
+#waitImage {
+  position: absolute;
+  display: block;
+  top: 35vh;
+  left: 45vw;
+  z-index: 100;
 }
 
 /* This is just in here so I remember animated element CSS

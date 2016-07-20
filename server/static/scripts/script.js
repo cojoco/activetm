@@ -46,8 +46,8 @@ $(document).ready(function() {
   }
 
   //Creates a document circle (this may not be small enough)
-  function makeDot(cx, cy, docNum) {
-    return $(svg('circle')).attr('id', 'doc' + docNum)
+  function makeDot(cx, cy) {
+    return $(svg('circle')).attr('id', 'doc' + Cookies.get('mdm_doc_number'))
                            .attr('class', 'dot')
                            .attr('cx', cx + '%')
                            .attr('cy', cy + '%')
@@ -57,6 +57,13 @@ $(document).ready(function() {
                            .attr('fill', 'gray')
                            .attr('stroke-opacity', '0.2')
                            .attr('fill-opacity', '0.2')
+  }
+
+  //Transforms data from a click to what's needed to make a dot
+  function makeNewDot(posX, posY) {
+    var cx = posX / $("#mapBase").width()
+    var cy = posY / $("#mapBase").height()
+    makeDot(cx, cy)
   }
 
   //List of dot bins, 0.5 to 99.5 every 0.5 increment
@@ -107,7 +114,7 @@ $(document).ready(function() {
   //Transforms a line position (between 0 and lineLength) to a label
   //  (between 0 and 1)
   function lineToLabel(line) {
-    var lineLength = $("#lineContainer").width()
+    var lineLength = $("#mapBase").width()
     //We want to avoid exactly 0 and exactly 1
     //TODO: I'm not sure this is actually true, I don't think the model cares
     if (line === 0) { return 0.01 / lineLength }
@@ -115,4 +122,48 @@ $(document).ready(function() {
     else { return line / lineLength }
   }
 
+  function leftMapOffset() {
+    return $("#mapBase").offset().left
+  }
+
+  function topMapOffset() {
+    return $("#mapBase").offset().top
+  }
+
+  $("#mapBase").on('click', mapClickHandler)
+
+  function mapClickHandler(event) {
+    var xPos = parseInt(event.pageX) - leftMapOffset()
+    var yPos = parseInt(event.pageY) - topMapOffset()
+    var label_x = lineToLabel(xPos)
+    var label_y = lineToLabel(yPos)
+    makeNewDot(xPos, yPos)
+    $("#waitContainer").show()
+    $.ajax({
+      url: '/labeldoc',
+      method: 'POST',
+      headers: {'uuid': Cookies.get('mdm_uuid')},
+      data: {'doc_number': Cookies.get('mdm_doc_number'),
+             'label_x': label_x,
+             'label_y': label_y
+            },
+      success: function(data) {
+        $.ajax({
+          url: '/train',
+          headers: {'uuid': Cookies.get('mdm_uuid')},
+          success: function() {
+            $.ajax({
+              url: '/getdoc',
+              headers: {'uuid': Cookies.get('mdm_uuid')},
+              success: function(docData) {
+                Cookies.set('mdm_doc_number', docData['doc_number'])
+                $("#docText").text(docData['document'])
+                $("#waitContainer").hide()
+              }
+            })
+          }
+        })
+      }
+    })
+  }
 })

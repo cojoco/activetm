@@ -48,13 +48,15 @@ $(document).ready(function() {
   //Creates a document circle (this may not be small enough)
   function makeDot(cx, cy, docNum) {
     return $(svg('circle')).attr('id', 'doc' + docNum)
-                           .attr('class', 'docDot')
+                           .attr('class', 'dot')
                            .attr('cx', cx + '%')
-                           .attr('cy', cy)
-                           .attr('r', 2)
-                           .attr('stroke', 'black')
+                           .attr('cy', cy + '%')
+                           .attr('r', '0.2%')
+                           .attr('stroke', 'gray')
                            .attr('stroke-width', 1)
-                           .attr('fill', 'black')
+                           .attr('fill', 'gray')
+                           .attr('stroke-opacity', '0.2')
+                           .attr('fill-opacity', '0.2')
   }
 
   //List of dot bins, 0.5 to 99.5 every 0.5 increment

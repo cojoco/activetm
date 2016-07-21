@@ -43,23 +43,18 @@ def buildsemisupervised(dataset, trainingdoc_ids, knownresp):
     return trainingset, list(range(0, len(dataset.vocab))), trainingdoc_ids
 
 
-def _get_epsilon(trainingsize):
-    """Get epsilon for recover_topics"""
-    if trainingsize < 1e2:
-        return 1e-4
-    if trainingsize < 1e3:
-        return 1e-5
-    if trainingsize < 1e4:
-        return 1e-6
-    return 1e-7
-
-
 #pylint:disable=too-many-instance-attributes
 class AbstractAnchor(abstract.AbstractModel):
     """Parent class for other supervised anchor words implementations"""
 
     #pylint:disable=too-many-arguments
-    def __init__(self, rng, numtopics, numtrain, regressor, trainingsetbuilder):
+    def __init__(self,
+                 rng,
+                 numtopics,
+                 numtrain,
+                 regressor,
+                 trainingsetbuilder,
+                 expgrad_epsilon):
         """SupervisedAnchor requires the following parameters:
             * rng :: random.Random
                 a random number generator
@@ -79,12 +74,13 @@ class AbstractAnchor(abstract.AbstractModel):
         self.regressor = regressor
         self.trainingsetbuilder = trainingsetbuilder
         self.numsamplesperpredictchain = 5
+        self.expgrad_epsilon = expgrad_epsilon
         # other instance variables initialized in train:
         #   self.corpus_to_train_vocab
         #   self.vocab_size
         #   self.topicses
         #   self.weightses
-        #   self.samplers
+        #   self.anchorses
 
     #pylint:disable=attribute-defined-outside-init,too-many-locals
     def train(self,
@@ -112,17 +108,28 @@ class AbstractAnchor(abstract.AbstractModel):
         self.topicses = []
         self.weightses = []
         self.predictors = []
+        self.anchorses = []
         # print 'Training set size:', trainingset.M.sum()
         for _ in range(self.numtrain):
             pdim = 1000 if trainingset.vocab_size > 1000 else trainingset.vocab_size
-            anchors = \
+            anchors, anchor_indices = \
                 ankura.anchor.gramschmidt_anchors(trainingset,
                                                   self.numtopics,
-                                                  0.1 * len(trainingset.titles),
-                                                  project_dim=pdim)
+                                                  0.015 * len(trainingset.titles),
+                                                  project_dim=pdim,
+                                                  return_indices=True)
+            '''
+            sorted_anchors = np.sort(anchor_indices)
+            if (sorted_anchors[1:] == sorted_anchors[:-1]).any():
+                print('Duplicate anchor word!')
+                for i in range(self.numtopics):
+                    print(anchor_indices[i])
+            '''
+            self.anchorses.append(anchor_indices)
+            # print('# Finished gramschmidt')
             topics = ankura.topic.recover_topics(trainingset,
                                                  anchors,
-                                                 _get_epsilon(trainingset.num_docs))
+                                                 self.expgrad_epsilon)
             self.topicses.append(topics)
             features = np.zeros((len(trainingdoc_ids), self.numtopics))
             for i, doc in enumerate(doc_ids):
@@ -225,23 +232,25 @@ class AbstractAnchor(abstract.AbstractModel):
 class RidgeAnchor(AbstractAnchor):
     """Supervised anchor words implementation using ridge regression"""
 
-    def __init__(self, rng, numtopics, numtrain):
+    def __init__(self, rng, numtopics, numtrain, expgrad_epsilon):
         super(RidgeAnchor, self).__init__(rng,
                                           numtopics,
                                           numtrain,
                                           Ridge,
-                                          buildsupervised)
+                                          buildsupervised,
+                                          expgrad_epsilon)
 
 
 class SemiRidgeAnchor(AbstractAnchor):
     """Semisupervised anchor words implementation using ridge regression"""
 
-    def __init__(self, rng, numtopics, numtrain):
+    def __init__(self, rng, numtopics, numtrain, expgrad_epsilon):
         super(SemiRidgeAnchor, self).__init__(rng,
                                               numtopics,
                                               numtrain,
                                               Ridge,
-                                              buildsemisupervised)
+                                              buildsemisupervised,
+                                              expgrad_epsilon)
 
 
 def build_gp():
@@ -253,13 +262,20 @@ class AbstractGPAnchor(AbstractAnchor):
     """Abstract class for anchor words implementation using Gaussian process"""
 
     #pylint:disable=too-many-arguments
-    def __init__(self, rng, numtopics, numtrain, regressor, buildtrainingset):
+    def __init__(self,
+                 rng,
+                 numtopics,
+                 numtrain,
+                 regressor,
+                 buildtrainingset,
+                 expgrad_epsilon):
         """builds SupervisedAnchor to use Gaussian process"""
         super(AbstractGPAnchor, self).__init__(rng,
                                                numtopics,
                                                numtrain,
                                                build_gp,
-                                               buildtrainingset)
+                                               buildtrainingset,
+                                               expgrad_epsilon)
 
     def get_uncertainty(self, doc):
         """Get uncertainty"""
@@ -276,21 +292,23 @@ class AbstractGPAnchor(AbstractAnchor):
 class GPAnchor(AbstractGPAnchor):
     """Supervised anchor words implementation using Gaussian process"""
 
-    def __init__(self, rng, numtopics, numtrain):
+    def __init__(self, rng, numtopics, numtrain, expgrad_epsilon):
         super(GPAnchor, self).__init__(rng,
                                        numtopics,
                                        numtrain,
                                        build_gp,
-                                       buildsupervised)
+                                       buildsupervised,
+                                       expgrad_epsilon)
 
 
 class SemiGPAnchor(AbstractGPAnchor):
     """Semisupervised anchor words implementation using Gaussian process"""
 
-    def __init__(self, rng, numtopics, numtrain):
+    def __init__(self, rng, numtopics, numtrain, expgrad_epsilon):
         super(SemiGPAnchor, self).__init__(rng,
                                            numtopics,
                                            numtrain,
                                            build_gp,
-                                           buildsemisupervised)
+                                           buildsemisupervised,
+                                           expgrad_epsilon)
 

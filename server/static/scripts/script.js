@@ -9,10 +9,6 @@ $(document).ready(function() {
   function useDocData(data) {
     Cookies.set('mdm_doc_number', data['doc_number'])
     $("#docText").text(data['document'])
-    console.log("predicted_label_x is " + data['predicted_label_x'])
-    console.log("uncertainty_x is " + data['uncertainty_x'])
-    console.log("predicted_label_y is " + data['predicted_label_y'])
-    console.log("uncertainty_y is " + data['uncertainty_y'])
     // Call this for old_doc endpoint case (it might train models, which
     //   takes a while and thus necessitates the spinning wheel)
     $("#waitContainer").hide()
@@ -64,7 +60,9 @@ $(document).ready(function() {
     //Get where the circle should go as x and y positions
     //Multiply by 100 to get percentages
     var cx = (posX / $("#mapBase").width()) * 100
+    console.log('posX:' + posX + ' width:' + $("#mapBase").width())
     var cy = (posY / $("#mapBase").height()) * 100
+    console.log('posY:' + posY + ' height:' + $("#mapBase").height())
     $("#mapBase").append(makeDot(cx, cy))
   }
 
@@ -113,6 +111,12 @@ $(document).ready(function() {
     }
   }
 
+  //This gets predictions for some number of documents from the server
+  //  and puts them on the Metadata Map so a user can see them
+  function makePredictions(numPredictions) {
+    console.log('makePredictions called with ' + numPredictions + ' desired')
+  }
+
   //Transforms a line position (between 0 and lineLength) to a label
   //  (between 0 and 1)
   function lineToLabel(line) {
@@ -139,6 +143,7 @@ $(document).ready(function() {
     var yPos = parseInt(event.pageY) - topMapOffset()
     var label_x = lineToLabel(xPos)
     var label_y = lineToLabel(yPos)
+    console.log('new dot at position (' + label_x + ',' + label_y + ')')
     makeNewDot(xPos, yPos)
     $("#waitContainer").show()
     $.ajax({

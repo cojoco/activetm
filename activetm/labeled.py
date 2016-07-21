@@ -41,7 +41,7 @@ class LabeledDataset(ankura.pipeline.Dataset):
     """
 
     def __init__(self, dataset, labels):
-        ankura.pipeline.Dataset.__init__(self, dataset.docwords, dataset.vocab, dataset.titles)
+        ankura.pipeline.Dataset.__init__(self, dataset.docwords, dataset.vocab, dataset.titles, metadata=dataset.metadata)
         self.labels = labels
         # precompute vanilla Q beforehand (useful for semi-supervised)
         ankura.pipeline.Dataset.compute_cooccurrences(self)

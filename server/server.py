@@ -102,13 +102,14 @@ def build_model():
     settings['model'] = 'semi_ridge_anchor'
     settings['numtopics'] = 20
     settings['numtrain'] = 1
+    settings['expgrad_epsilon'] = 1e-4
     return models.build(RNG, settings)
 
 
 def train_model(uid):
     restarted = False
     with LOCK:
-        # If uid is not in MODELS, it means the server restarted and we may
+        # If uid is not in MODELS, it means the server restarted and we
         #   need to retrain the model if it was trained before the restart
         if uid not in MODELS:
             MODELS[uid] = (build_model(), build_model())
@@ -190,7 +191,7 @@ def get_doc():
             docs_with_labels = USER_DICT[uid]['docs_with_labels']
             unlabeled_doc_ids = USER_DICT[uid]['unlabeled_doc_ids']
             cand_set = select.reservoir(unlabeled_doc_ids, RNG, CAND_SIZE)
-            # We are currently choosing based on what model 1 wants
+            # We are currently choosing based on what model 0 wants
             # TODO: Use both models' output to choose the next doc
             doc_number = SELECT_METHOD(DATASET, docs_with_labels.keys(),
                         cand_set, MODELS[uid][0], RNG, LABEL_INCREMENT)[0] 

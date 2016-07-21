@@ -61,9 +61,11 @@ $(document).ready(function() {
 
   //Transforms data from a click to what's needed to make a dot
   function makeNewDot(posX, posY) {
-    var cx = posX / $("#mapBase").width()
-    var cy = posY / $("#mapBase").height()
-    makeDot(cx, cy)
+    //Get where the circle should go as x and y positions
+    //Multiply by 100 to get percentages
+    var cx = (posX / $("#mapBase").width()) * 100
+    var cy = (posY / $("#mapBase").height()) * 100
+    $("#mapBase").append(makeDot(cx, cy))
   }
 
   //List of dot bins, 0.5 to 99.5 every 0.5 increment
@@ -155,11 +157,7 @@ $(document).ready(function() {
             $.ajax({
               url: '/getdoc',
               headers: {'uuid': Cookies.get('mdm_uuid')},
-              success: function(docData) {
-                Cookies.set('mdm_doc_number', docData['doc_number'])
-                $("#docText").text(docData['document'])
-                $("#waitContainer").hide()
-              }
+              success: useDocData
             })
           }
         })

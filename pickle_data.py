@@ -7,6 +7,7 @@ import pickle
 import time
 
 import ankura.pipeline
+import ankura.label as label
 
 from activetm import labeled
 from activetm import utils
@@ -15,9 +16,9 @@ from activetm import utils
 def get_dataset(settings):
     """Get dataset"""
     if settings['corpus'].find('*') >= 0:
-        dataset = ankura.pipeline.read_glob(settings['corpus'])
+        dataset = ankura.pipeline.read_glob(settings['corpus'], labeler=label.text)
     else:
-        dataset = ankura.pipeline.read_file(settings['corpus'])
+        dataset = ankura.pipeline.read_file(settings['corpus'], labeler=label.text)
     dataset = ankura.pipeline.filter_stopwords(dataset, settings['stopwords'])
     dataset = ankura.pipeline.filter_rarewords(dataset, int(settings['rare']))
     dataset = ankura.pipeline.filter_commonwords(dataset, int(settings['common']))

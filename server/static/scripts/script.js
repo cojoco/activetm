@@ -9,6 +9,7 @@ $(document).ready(function() {
   function useDocData(data) {
     Cookies.set('mdm_doc_number', data['doc_number'])
     $("#docText").text(data['document'])
+    console.log(data)
     // Call this for old_doc endpoint case (it might train models, which
     //   takes a while and thus necessitates the spinning wheel)
     $("#waitContainer").hide()
@@ -60,9 +61,7 @@ $(document).ready(function() {
     //Get where the circle should go as x and y positions
     //Multiply by 100 to get percentages
     var cx = (posX / $("#mapBase").width()) * 100
-    console.log('posX:' + posX + ' width:' + $("#mapBase").width())
     var cy = (posY / $("#mapBase").height()) * 100
-    console.log('posY:' + posY + ' height:' + $("#mapBase").height())
     $("#mapBase").append(makeDot(cx, cy))
   }
 
@@ -139,11 +138,15 @@ $(document).ready(function() {
   $("#mapBase").on('click', mapClickHandler)
 
   function mapClickHandler(event) {
-    var xPos = parseInt(event.pageX) - leftMapOffset()
+    var xPos = parseInt(event.pageX) - leftMapOffset() - 0.5
     var yPos = parseInt(event.pageY) - topMapOffset()
+    if (xPos < 1 || xPos > $("#mapBase").width() ||
+        yPos < 1 || yPos > $("#mapBase").height()) {
+      //If on the border, we don't want the click to count
+      return
+    } 
     var label_x = lineToLabel(xPos)
     var label_y = lineToLabel(yPos)
-    console.log('new dot at position (' + label_x + ',' + label_y + ')')
     makeNewDot(xPos, yPos)
     $("#waitContainer").show()
     $.ajax({

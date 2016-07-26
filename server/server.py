@@ -53,7 +53,7 @@ CAND_SIZE = 500
 LABEL_INCREMENT = 1
 
 # Start training after START_TRAINING labeled documents
-START_TRAINING = 20
+START_TRAINING = 30
 # Train every TRAINING_INCREMENT labeled documents after START_TRAINING
 TRAINING_INCREMENT = 10
 
@@ -115,7 +115,7 @@ def train_model(uid):
             MODELS[uid] = (build_model(), build_model())
             restarted = True
         num_labeled_ids = len(USER_DICT[uid]['docs_with_labels'])
-        # Train at 20, 30, 40, 50... documents labeled
+        # Train at 30, 40, 50... documents labeled
         if (num_labeled_ids >= START_TRAINING and
         (restarted or num_labeled_ids % TRAINING_INCREMENT == 0)):
             USER_DICT[uid]['training_complete'] = False

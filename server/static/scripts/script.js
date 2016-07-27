@@ -15,13 +15,28 @@ $(document).ready(function() {
     trigger: 'manual'
   })
 
-  //This makes use of the data from the /getdoc or /olddoc endpoints
+  //This makes use of the data from the /getdoc endpoint
   function useDocData(data) {
     Cookies.set('mdm_doc_number', data['doc_number'])
     $("#docText").text(data['document'])
-    console.log(data)
-    //Call this for old_doc endpoint case (it might train models, which
-    //  takes a while and thus necessitates the spinning wheel)
+    $("#waitContainer").hide()
+  }
+
+  //This makes use of the data from the /olddoc endpoint
+  function useOldDocData(data) {
+    Cookies.set('mdm_doc_number', data['doc_number'])
+    $("#docText").text(data['document'])
+    //Remake the dots that were there before the refresh
+    for (var docNumber in data['labeled_docs']) {
+      var cx = data['labeled_docs'][docNumber][0] * 100
+      var cy = data['labeled_docs'][docNumber][1] * 100
+      makeDot(cx, cy, docNumber)
+    }
+    for (var docNumber in data['predicted_docs']) {
+      var cx = data['predicted_docs'][docNumber][0] * 100
+      var cy = data['predicted_docs'][docNumber][1] * 100
+      makeDot(cx, cy, docNumber)
+    }
     $("#waitContainer").hide()
   }
 
@@ -43,7 +58,7 @@ $(document).ready(function() {
       url: '/olddoc',
       headers: {'uuid': Cookies.get('mdm_uuid'),
                 'doc_number': Cookies.get('mdm_doc_number')},
-      success: useDocData
+      success: useOldDocData
     })
   }
 
@@ -54,16 +69,16 @@ $(document).ready(function() {
 
   //Creates a document circle (this may not be small enough)
   function makeDot(cx, cy, docNum) {
-    return $(svg('circle')).attr('id', 'doc' + docNum)
-                           .attr('class', 'dot')
-                           .attr('cx', cx + '%')
-                           .attr('cy', cy + '%')
-                           .attr('r', '0.2%')
-                           .attr('stroke', 'gray')
-                           .attr('stroke-width', 1)
-                           .attr('fill', 'gray')
-                           .attr('stroke-opacity', '0.2')
-                           .attr('fill-opacity', '0.2')
+    $("#mapBase").append($(svg('circle')).attr('id', 'doc' + docNum)
+                                         .attr('class', 'dot')
+                                         .attr('cx', cx + '%')
+                                         .attr('cy', cy + '%')
+                                         .attr('r', '0.2%')
+                                         .attr('stroke', 'gray')
+                                         .attr('stroke-width', 1)
+                                         .attr('fill', 'gray')
+                                         .attr('stroke-opacity', '0.2')
+                                         .attr('fill-opacity', '0.2'))
   }
 
   //Transforms data from a click to what's needed to make a dot
@@ -72,7 +87,7 @@ $(document).ready(function() {
     //Multiply by 100 to get percentages
     var cx = (posX / $("#mapBase").width()) * 100
     var cy = (posY / $("#mapBase").height()) * 100
-    $("#mapBase").append(makeDot(cx, cy, Cookies.get('mdm_doc_number')))
+    makeDot(cx, cy, Cookies.get('mdm_doc_number'))
   }
 
   //This gets predictions for some number of documents from the server
@@ -92,7 +107,7 @@ $(document).ready(function() {
           var docNum = docs[i]['doc_number']
           //TODO: docText is not currently used, but will be later.
           var docText = docs[i]['document']
-          $("#mapBase").append(makeDot(cx, cy, docNum))
+          makeDot(cx, cy, docNum)
           $("#waitContainer").hide()
         }
       }

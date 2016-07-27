@@ -91,8 +91,8 @@ def serve_end():
 def remove_user():
     """Removes a user, called when a user goes to end.html"""
     uid = str(flask.request.headers.get('uuid'))
-    if uid in USER_DICT:
-        del USER_DICT[uid]
+    # Remove the uid and all related information from the USER_DICT
+    USER_DICT.pop(uid, None)
     return flask.jsonify({})
 
 
@@ -147,6 +147,7 @@ def get_uid():
             'current_doc': -1,
             # This is a doc_number to label mapping
             'docs_with_labels': {},
+            'predicted_docs': {},
             'unlabeled_doc_ids': list(ALL_DOC_IDS),
             'training_complete': False
         }
@@ -232,7 +233,7 @@ def is_model_trained():
 
 @APP.route('/olddoc')
 def old_doc():
-    """Gets old document text for a user if they reconnect"""
+    """Get old document and predicted/labeled document values for a user"""
     uid = str(flask.request.headers.get('uuid'))
     doc_number = int(flask.request.headers.get('doc_number'))
     document = DATASET.doc_metadata(doc_number, 'text')
@@ -253,7 +254,9 @@ def old_doc():
                          predicted_label_x=predicted_label_x,
                          uncertainty_x=uncertainty_x,
                          predicted_label_y=predicted_label_y,
-                         uncertainty_y=uncertainty_y)
+                         uncertainty_y=uncertainty_y,
+                         labeled_docs=USER_DICT[uid]['docs_with_labels'],
+                         predicted_docs=USER_DICT[uid]['predicted_docs'])
 
 
 @APP.route('/predictions')
@@ -265,10 +268,13 @@ def make_predictions():
     send_docs = random.sample(USER_DICT[uid]['unlabeled_doc_ids'], num_docs)
     for i, doc_number in enumerate(send_docs):
         doc = DATASET.doc_tokens(doc_number)
+        label_x = MODELS[uid][0].predict(doc)
+        label_y = MODELS[uid][1].predict(doc)
         send_docs[i] = {'document': DATASET.doc_metadata(doc_number, 'text'),
                         'doc_number': doc_number,
-                        'predicted_label_x': MODELS[uid][0].predict(doc),
-                        'predicted_label_y': MODELS[uid][1].predict(doc)}
+                        'predicted_label_x': label_x,
+                        'predicted_label_y': label_y}
+        USER_DICT[uid]['predicted_docs'][doc_number] = (label_x, label_y)
         USER_DICT[uid]['unlabeled_doc_ids'].remove(doc_number)
     return flask.jsonify(documents=send_docs)
 

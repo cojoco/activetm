@@ -244,6 +244,8 @@ def old_doc():
     if uid not in MODELS:
         train_model(uid)
     with LOCK:
+        print(USER_DICT[uid]['predicted_docs'])
+        print(USER_DICT[uid]['docs_with_labels'])
         if len(USER_DICT[uid]['docs_with_labels']) >= START_TRAINING:
             doc = DATASET.doc_tokens(doc_number)
             predicted_label_x = MODELS[uid][0].predict(doc)
@@ -276,6 +278,7 @@ def make_predictions():
                         'predicted_label_y': label_y}
         USER_DICT[uid]['predicted_docs'][doc_number] = (label_x, label_y)
         USER_DICT[uid]['unlabeled_doc_ids'].remove(doc_number)
+    save_state()
     return flask.jsonify(documents=send_docs)
 
 

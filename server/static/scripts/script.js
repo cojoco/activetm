@@ -9,18 +9,19 @@ $(document).ready(function() {
 
   //This initializes the popover so we can manually activate it later
   $("#predictButton").popover({
-    content: "Please label more documents before trying to get " +
-      "predictions",
+    content: "Please give us your predictions for more documents (30 total)" +
+      " before trying to get our predictions",
     placement: 'top',
     trigger: 'manual'
   })
 
+  //This makes use of the data from the /getdoc or /olddoc endpoints
   function useDocData(data) {
     Cookies.set('mdm_doc_number', data['doc_number'])
     $("#docText").text(data['document'])
     console.log(data)
-    // Call this for old_doc endpoint case (it might train models, which
-    //   takes a while and thus necessitates the spinning wheel)
+    //Call this for old_doc endpoint case (it might train models, which
+    //  takes a while and thus necessitates the spinning wheel)
     $("#waitContainer").hide()
   }
 
@@ -66,57 +67,12 @@ $(document).ready(function() {
   }
 
   //Transforms data from a click to what's needed to make a dot
-  function makeNewDot(posX, posY) {
+  function makeDotFromClick(posX, posY) {
     //Get where the circle should go as x and y positions
     //Multiply by 100 to get percentages
     var cx = (posX / $("#mapBase").width()) * 100
     var cy = (posY / $("#mapBase").height()) * 100
     $("#mapBase").append(makeDot(cx, cy, Cookies.get('mdm_doc_number')))
-  }
-
-  //List of dot bins, 0.5 to 99.5 every 0.5 increment
-  var dotBins = new Array(199)
-  for (var i = 0; i <= 99.5; i += 0.5) {
-		//Need a 2d list of dot bins
-    dotBins[i] = new Array(199)
-		for (var j = 0; j <= 99.5; j += 0.5) {
-			dotBins[i][j] = []
-		}
-  }
-
-  function labelToLine(label) {
-    var lineLength = $("#lineContainer").width()
-    //Our predictor sometimes predicts outside [0.005,0.995], so we push those values
-    //  inside the valid range
-    if (label > 0.995) {
-      label = 0.995
-    }
-    if (label < 0.005) {
-      label = 0.005
-    }
-    return label * lineLength
-  }
-
-  //Transforms a label to a dot position
-  function labelToDot(label) {
-    //We want the dot position to be [0.5,99.5] and divide cleanly by 0.5
-    if (label > 0.995) {
-      label = 99.5
-      return label
-    }
-    else if (label < 0.005) {
-      label = 0.5
-      return label
-    }
-    else {
-      label *= 100
-      //Get the label to be cleanly divisible by 0.5
-      //TODO: Will this have any problems with float precision?
-      if (label % 0.5 != 0) {
-        label -= label % 0.5
-      }
-      return label
-    }
   }
 
   //This gets predictions for some number of documents from the server
@@ -166,6 +122,7 @@ $(document).ready(function() {
     })
   }
 
+  //Assign a listener to handle the user wanting to get the model's predictions
   $("#predictForm").on('submit', makePredictions)
 
   //Transforms a line position (between 0 and lineLength) to a label
@@ -179,16 +136,47 @@ $(document).ready(function() {
     else { return line / lineLength }
   }
 
+  //This gets the offset of the map's left side from the screen edge
   function leftMapOffset() {
     return $("#mapBase").offset().left
   }
 
+  //This gets the offset of the map's top side from the screen edge
   function topMapOffset() {
     return $("#mapBase").offset().top
   }
 
+  //Assign an onclick handler to the map
   $("#mapBase").on('click', mapClickHandler)
 
+  //This goes through all the ajax calls necessary to label a document
+  function labelDoc(label_x, label_y) {
+    $.ajax({
+      url: '/labeldoc',
+      method: 'POST',
+      headers: {'uuid': Cookies.get('mdm_uuid')},
+      data: {'doc_number': Cookies.get('mdm_doc_number'),
+             'label_x': label_x,
+             'label_y': label_y
+            },
+      success: function(labelData) {
+        $.ajax({
+          url: '/train',
+          headers: {'uuid': Cookies.get('mdm_uuid')},
+          success: function(trainData) {
+            $.ajax({
+              url: '/getdoc',
+              headers: {'uuid': Cookies.get('mdm_uuid')},
+              success: useDocData
+            })
+          }
+        })
+      }
+    })
+  }
+
+  //This transforms a click on the map to a dot (on the map) and a label
+  //  (in the model).
   function mapClickHandler(event) {
     var xPos = parseInt(event.pageX) - leftMapOffset() - 0.5
     var yPos = parseInt(event.pageY) - topMapOffset()
@@ -199,29 +187,9 @@ $(document).ready(function() {
     } 
     var label_x = lineToLabel(xPos)
     var label_y = lineToLabel(yPos)
-    makeNewDot(xPos, yPos)
+    makeDotFromClick(xPos, yPos)
+    //We show the spinning wheel here because we might train the model
     $("#waitContainer").show()
-    $.ajax({
-      url: '/labeldoc',
-      method: 'POST',
-      headers: {'uuid': Cookies.get('mdm_uuid')},
-      data: {'doc_number': Cookies.get('mdm_doc_number'),
-             'label_x': label_x,
-             'label_y': label_y
-            },
-      success: function(data) {
-        $.ajax({
-          url: '/train',
-          headers: {'uuid': Cookies.get('mdm_uuid')},
-          success: function() {
-            $.ajax({
-              url: '/getdoc',
-              headers: {'uuid': Cookies.get('mdm_uuid')},
-              success: useDocData
-            })
-          }
-        })
-      }
-    })
+    labelDoc(label_x, label_y)
   }
 })

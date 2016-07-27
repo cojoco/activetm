@@ -4,7 +4,16 @@ $(document).ready(function() {
                          top: '+=100px'})
   */
 
+  //We only want the spinning wheel to show when needed
   $("#waitContainer").hide()
+
+  //This initializes the popover so we can manually activate it later
+  $("#predictButton").popover({
+    content: "Please label more documents before trying to get " +
+      "predictions",
+    placement: 'top',
+    trigger: 'manual'
+  })
 
   function useDocData(data) {
     Cookies.set('mdm_doc_number', data['doc_number'])
@@ -43,8 +52,8 @@ $(document).ready(function() {
   }
 
   //Creates a document circle (this may not be small enough)
-  function makeDot(cx, cy) {
-    return $(svg('circle')).attr('id', 'doc' + Cookies.get('mdm_doc_number'))
+  function makeDot(cx, cy, docNum) {
+    return $(svg('circle')).attr('id', 'doc' + docNum)
                            .attr('class', 'dot')
                            .attr('cx', cx + '%')
                            .attr('cy', cy + '%')
@@ -62,7 +71,7 @@ $(document).ready(function() {
     //Multiply by 100 to get percentages
     var cx = (posX / $("#mapBase").width()) * 100
     var cy = (posY / $("#mapBase").height()) * 100
-    $("#mapBase").append(makeDot(cx, cy))
+    $("#mapBase").append(makeDot(cx, cy, Cookies.get('mdm_doc_number')))
   }
 
   //List of dot bins, 0.5 to 99.5 every 0.5 increment
@@ -112,9 +121,52 @@ $(document).ready(function() {
 
   //This gets predictions for some number of documents from the server
   //  and puts them on the Metadata Map so a user can see them
-  function makePredictions(numPredictions) {
-    console.log('makePredictions called with ' + numPredictions + ' desired')
+  function subMakePredictions(numPredictions) {
+    console.log('subMakePredictions called with ' + numPredictions + ' desired')
+    $.ajax({
+      url: '/predictions',
+      headers: {'uuid': Cookies.get('mdm_uuid'),
+                'num_docs': numPredictions},
+      success: function usePredictions(data) {
+        var docs = data['documents']
+        for (var i = 0; i < docs.length; i++) {
+          //Convert cx and cy from decimal to percentage
+          var cx = docs[i]['predicted_label_x'] * 100
+          var cy = docs[i]['predicted_label_y'] * 100
+          var docNum = docs[i]['doc_number']
+          //TODO: docText is not currently used, but will be later.
+          var docText = docs[i]['document']
+          $("#mapBase").append(makeDot(cx, cy, docNum))
+          $("#waitContainer").hide()
+        }
+      }
+    })
   }
+
+  //This calls subMakePredictions because I can't find a good way to pass a
+  //  value to it while setting it as the listener... Must be a better way
+  function makePredictions(event) {
+    event.preventDefault()
+    $.ajax({
+      url: '/istrained',
+      headers: {'uuid': Cookies.get('mdm_uuid')},
+      success: function(data) {
+        if (data['trained'] === true) {
+          $("#waitContainer").show()
+          var numPredictions = parseInt($("#predictInput").val())
+          subMakePredictions(numPredictions)
+        }
+        else {
+          $("#predictButton").popover('show')
+          setTimeout(function() {
+            $("#predictButton").popover('hide')
+          }, 3000)
+        }
+      }
+    })
+  }
+
+  $("#predictForm").on('submit', makePredictions)
 
   //Transforms a line position (between 0 and lineLength) to a label
   //  (between 0 and 1)

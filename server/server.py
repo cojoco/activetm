@@ -10,7 +10,7 @@ import random
 import sys
 
 # This is ugly/dirty/hackish... Fix it if you like.
-# You could probably just install activetm in your user library.
+# You could probably just install activetm.
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir))
 
 from activetm.active import evaluate
@@ -220,6 +220,16 @@ def train_endpoint():
     return flask.jsonify({})
 
 
+@APP.route('/istrained')
+def is_model_trained():
+    uid = str(flask.request.headers.get('uuid'))
+    trained = False
+    if uid in USER_DICT:
+        if USER_DICT[uid]['training_complete']:
+            trained = True
+    return flask.jsonify({'id': uid, 'trained': trained})
+
+
 @APP.route('/olddoc')
 def old_doc():
     """Gets old document text for a user if they reconnect"""
@@ -244,6 +254,23 @@ def old_doc():
                          uncertainty_x=uncertainty_x,
                          predicted_label_y=predicted_label_y,
                          uncertainty_y=uncertainty_y)
+
+
+@APP.route('/predictions')
+def make_predictions():
+    """Makes num_docs predictions and sends them to the client"""
+    uid = str(flask.request.headers.get('uuid'))
+    num_docs = int(flask.request.headers.get('num_docs'))
+    # These are the documents to send
+    send_docs = random.sample(USER_DICT[uid]['unlabeled_doc_ids'], num_docs)
+    for i, doc_number in enumerate(send_docs):
+        doc = DATASET.doc_tokens(doc_number)
+        send_docs[i] = {'document': DATASET.doc_metadata(doc_number, 'text'),
+                        'doc_number': doc_number,
+                        'predicted_label_x': MODELS[uid][0].predict(doc),
+                        'predicted_label_y': MODELS[uid][1].predict(doc)}
+        USER_DICT[uid]['unlabeled_doc_ids'].remove(doc_number)
+    return flask.jsonify(documents=send_docs)
 
 
 if __name__ == '__main__':

@@ -127,9 +127,6 @@ def train_model(uid):
                 # Labels are tuples, one value for horiz and one for vert
                 labels_one.append(label[0])
                 labels_two.append(label[1])
-            print('labeled_doc_ids',labeled_doc_ids)
-            print('labels_one',labels_one)
-            print('labels_two',labels_two)
             MODELS[uid][0].train(DATASET, labeled_doc_ids, labels_one, True)
             MODELS[uid][1].train(DATASET, labeled_doc_ids, labels_two, True)
             USER_DICT[uid]['training_complete'] = True
@@ -244,8 +241,6 @@ def old_doc():
     if uid not in MODELS:
         train_model(uid)
     with LOCK:
-        print(USER_DICT[uid]['predicted_docs'])
-        print(USER_DICT[uid]['docs_with_labels'])
         if len(USER_DICT[uid]['docs_with_labels']) >= START_TRAINING:
             doc = DATASET.doc_tokens(doc_number)
             predicted_label_x = MODELS[uid][0].predict(doc)

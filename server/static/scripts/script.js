@@ -19,6 +19,7 @@ $(document).ready(function() {
   function useDocData(data) {
     Cookies.set('mdm_doc_number', data['doc_number'])
     $("#docText").text(data['document'])
+    docTexts['doc' + data['doc_number']] = data['document']
     $("#waitContainer").hide()
   }
 
@@ -26,15 +27,18 @@ $(document).ready(function() {
   function useOldDocData(data) {
     Cookies.set('mdm_doc_number', data['doc_number'])
     $("#docText").text(data['document'])
+    docTexts['doc' + data['doc_number']] = data['document']
     //Remake the dots that were there before the refresh
     for (var docNumber in data['labeled_docs']) {
-      var cx = data['labeled_docs'][docNumber][0] * 100
-      var cy = data['labeled_docs'][docNumber][1] * 100
+      var cx = data['labeled_docs'][docNumber]['x'] * 100
+      var cy = data['labeled_docs'][docNumber]['y'] * 100
+      docTexts['doc' + docNumber] = data['labeled_docs'][docNumber]['text']
       makeDot(cx, cy, docNumber)
     }
     for (var docNumber in data['predicted_docs']) {
-      var cx = data['predicted_docs'][docNumber][0] * 100
-      var cy = data['predicted_docs'][docNumber][1] * 100
+      var cx = data['predicted_docs'][docNumber]['x'] * 100
+      var cy = data['predicted_docs'][docNumber]['y'] * 100
+      docTexts['doc' + docNumber] = data['predicted_docs'][docNumber]['text']
       makeDot(cx, cy, docNumber)
     }
     $("#waitContainer").hide()
@@ -60,6 +64,39 @@ $(document).ready(function() {
                 'doc_number': Cookies.get('mdm_doc_number')},
       success: useOldDocData
     })
+  }
+
+  //List docs mode when listButton is clicked (remove handler from mapBase,
+  //  add to dots)
+  $("#listButton").on('click', function(e) {
+    $("#mapBase").off('click')
+    $(".dot").on('mouseenter', addDocToList)
+    $(".dot").on('mouseleave', removeDocFromList)
+    console.log('In list mode')
+  })
+
+  //Label docs mode when labelButton is clicked (add handler to mapBase,
+  //  remove from dots)
+  $("#labelButton").on('click', function(e) {
+    $("#mapBase").on('click', mapClickHandler)
+    $(".dot").off('mouseenter')
+    $(".dot").off('mouseleave')
+    console.log('In label mode')
+  })
+
+  //Holds the text of all documents we have
+  var docTexts = {}
+
+  //Adds a document to the list, called on mouseenter of a dot
+  function addDocToList(event) {
+    var listItem = "<p id='" + this.id + "listed' class='listedDoc'>" +
+                   docTexts[this.id] + "</p>"
+    $("#docList").append(listItem)
+  }
+
+  //Removes a document from the list, called on mouseleave of a dot
+  function removeDocFromList(event) {
+    $('#' + this.id + 'listed').remove()
   }
 
   //Creates an SVG element in a way JQuery can work with it
@@ -105,8 +142,8 @@ $(document).ready(function() {
           var cx = docs[i]['predicted_label_x'] * 100
           var cy = docs[i]['predicted_label_y'] * 100
           var docNum = docs[i]['doc_number']
-          //TODO: docText is not currently used, but will be later.
           var docText = docs[i]['document']
+          docTexts['doc' + docNum] = docText
           makeDot(cx, cy, docNum)
           $("#waitContainer").hide()
         }

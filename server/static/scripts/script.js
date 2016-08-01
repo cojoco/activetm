@@ -193,10 +193,13 @@ $(document).ready(function() {
   //This transforms a click on the map to a dot (on the map) and a label
   //  (in the model).
   function mapClickHandler(event) {
-    var xPos = parseInt(event.pageX) - leftMapOffset() - 0.5
-    var yPos = parseInt(event.pageY) - topMapOffset()
-    if (xPos < 1 || xPos > $("#mapBase").width() ||
-        yPos < 1 || yPos > $("#mapBase").height()) {
+    //Subtract 1 to account for the border
+    var xPos = parseInt(event.pageX) - leftMapOffset() - 1
+    var yPos = parseInt(event.pageY) - topMapOffset() - 1
+    console.log(xPos)
+    console.log(yPos)
+    if (xPos < 0 || xPos > $("#mapBase").width() ||
+        yPos < 0 || yPos > $("#mapBase").height()) {
       //If on the border, we don't want the click to count
       return
     } 

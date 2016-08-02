@@ -13,6 +13,8 @@ body {
 
 .listedDoc {
   color: white;
+  border-bottom: 1px dashed white;
+  padding-bottom: 5px;
 }
 
 .mapMeasure {
@@ -22,7 +24,7 @@ body {
 }
 
 #docContainer {
-  margin-top: 82vh;
+  margin-top: 72vh;
   width: 100%;
 }
 
@@ -31,10 +33,10 @@ body {
   border: 1px solid white;
   margin-top: 10px;
   right: 10px;
-  width: 15vw;
-  height: 80vw;
-  max-height: 80vh;
-  max-width: 15vh;
+  width: 27vw;
+  height: 70vw;
+  max-height: 70vh;
+  max-width: 27vh;
   overflow: auto;
 }
 
@@ -57,10 +59,10 @@ body {
 
 #mapBase {
   z-index: 0;
-  width: 80vw;
-  height: 80vw;
-  max-height: 80vh;
-  max-width: 80vh;
+  width: 70vw;
+  height: 70vw;
+  max-height: 70vh;
+  max-width: 70vh;
   margin: auto;
   margin-left: 10px;
   margin-top: 10px;

@@ -31,62 +31,47 @@ function useOldDocData(data) {
 
 //Handles the list mode button being clicked
 function listButtonClicked(e) {
-  $("#mapBase").off('click')
-  $(".dot").on('mouseenter', addDocToList)
-  $(".dot").on('mouseleave', removeDocFromList)
+  $("#mapBase").off('click').on('click', checkForDots)
   console.log('In list mode')
 }
 
 //Handles the label mode button being clicked
 function labelButtonClicked(e) {
-  $("#mapBase").on('click', mapClickHandler)
-  $(".dot").off('mouseenter')
-  $(".dot").off('mouseleave')
+  $("#mapBase").off('click').on('click', mapClickHandler)
   console.log('In label mode')
 }
 
-//Adds a document to the list, called on mouseenter of a dot
-function addDocToList(event) {
-  console.log(this.id.slice(3))
-  var listItem = "<p id='" + this.id + "listed' class='listedDoc'>" +
-                 map.documents[this.id.slice(3)].text + "</p>"
+//Checks for dots under the mouse, called on mouseclick of the map in list mode
+function checkForDots(event) {
+  //Remove old documents so we only display those that were clicked on
+  $(".listedDoc").remove()
   var list = []
-  $("#docList").append(listItem)
-  $("#"+this.id).off('mouseleave').css('pointer-events', 'none')
   var nextEl = document.elementFromPoint(event.pageX, event.pageY)
   if (nextEl.id.slice(0,3) === 'dot') {
-    list.push(this)
     list.push(nextEl)
     addLowerDocsToList(nextEl, event.pageX, event.pageY, list)
   }
-  else {
-    $("#"+this.id).css('pointer-events', '')
-                  .on('mouseleave', removeDocFromList)
-  }
 }
 
-//Checks for dots below the top dot
+//Recursively checks for dots under the mouse
 function addLowerDocsToList(el, x, y, list) {
+  var docText = map.documents[el.id.slice(3)].text
+  var end = Math.min(docText.length, 97)
   var listItem = "<p id='" + el.id + "listed' class='listedDoc'>" +
-                 map.documents[el.id.slice(3)].text + "</p>"
+                 docText.slice(0, end) + "..." + "</p>"
   $("#docList").append(listItem)
-  $("#"+el.id).off('mouseleave').css('pointer-events', 'none')
+  $("#"+el.id).css('pointer-events', 'none')
   var nextEl = document.elementFromPoint(x, y)
   if (nextEl.id.slice(0,3) === 'dot') {
     list.push(nextEl)
     addLowerDocsToList(nextEl, x, y, list)
   }
   else {
-    for (elem of list.reverse()) {
+    //Make it so the documents can be selected again in the future
+    for (elem of list) {
       $("#"+elem.id).css('pointer-events', '')
-                    .on('mouseleave', removeDocFromList)
     }
   }
-}
-
-//Removes a document from the list, called on mouseleave of a dot
-function removeDocFromList(event) {
-  $('#' + this.id + 'listed').remove()
 }
 
 //This goes through all the ajax calls necessary to label a document and get

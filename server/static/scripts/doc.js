@@ -22,6 +22,7 @@ Document.prototype = {
                    .text(this.text.slice(0, end) + '...')
   },
 
+  //Creates a list entry <div> to stick in the DOM
   toListEntry: function toListEntry() {
     //This measures how far into the document's text we can slice
     var end = Math.min(this.text.length, 97)
@@ -120,7 +121,7 @@ Document.prototype = {
 //    modal.append(modalOuter)
     //Stick the modal and tabs in the DOM
     $("#modals").append(modal)
-    //Return a newly created paragraph
+    //Return a newly created list entry
     return $('<div>').attr('id', this.id + 'listed')
                    .attr('class', 'listedDoc')
                    .html(titleString + '<br>' + textString + '<br>')

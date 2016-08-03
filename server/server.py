@@ -159,7 +159,8 @@ def label_doc():
     doc_number = int(flask.request.values.get('doc_number'))
     label_x = float(flask.request.values.get('label_x'))
     label_y = float(flask.request.values.get('label_y'))
-    doc_text = DATASET.doc_metadata(doc_number, 'text')
+    text = DATASET.doc_metadata(doc_number, 'text')
+    title = DATASET.titles[doc_number]
     with LOCK:
         if uid in USER_DICT:
             # If this endpoint was hit multiple times (say while the model was
@@ -168,7 +169,8 @@ def label_doc():
                 return flask.jsonify(user_id=uid)
             USER_DICT[uid]['docs_with_labels'][doc_number] = {'x': label_x,
                                                               'y': label_y,
-                                                              'text': doc_text}
+                                                              'text': text,
+                                                              'title': title}
             USER_DICT[uid]['unlabeled_doc_ids'].remove(doc_number)
     save_state()
     return flask.jsonify(user_id=uid)
@@ -197,6 +199,7 @@ def get_doc():
             doc_number = SELECT_METHOD(DATASET, docs_with_labels.keys(),
                         cand_set, MODELS[uid][0], RNG, LABEL_INCREMENT)[0] 
             document = DATASET.doc_metadata(doc_number, 'text')
+            doc_title = DATASET.titles[doc_number]
             USER_DICT[uid]['current_doc'] = doc_number
             if (len(docs_with_labels) >= START_TRAINING and
             USER_DICT[uid]['training_complete'] is True):
@@ -206,7 +209,9 @@ def get_doc():
                 predicted_label_y = MODELS[uid][1].predict(doc)
                 uncertainty_y = MODELS[uid][1].get_uncertainty(doc)
     save_state()
-    return flask.jsonify(document=document, doc_number=doc_number,
+    return flask.jsonify(document=document,
+                         doc_number=doc_number,
+                         doc_title=doc_title,
                          predicted_label_x=predicted_label_x,
                          uncertainty_x=uncertainty_x,
                          predicted_label_y=predicted_label_y,
@@ -237,6 +242,7 @@ def old_doc():
     uid = str(flask.request.headers.get('uuid'))
     doc_number = int(flask.request.headers.get('doc_number'))
     document = DATASET.doc_metadata(doc_number, 'text')
+    doc_title = DATASET.titles[doc_number]
     predicted_label_x = BASE_LABEL
     uncertainty_x = BASE_UNCERTAINTY
     predicted_label_y = BASE_LABEL
@@ -250,7 +256,9 @@ def old_doc():
             uncertainty_x = MODELS[uid][0].get_uncertainty(doc)
             predicted_label_y = MODELS[uid][1].predict(doc)
             uncertainty_y = MODELS[uid][1].get_uncertainty(doc)
-    return flask.jsonify(document=document, doc_number=doc_number,
+    return flask.jsonify(document=document,
+                         doc_number=doc_number,
+                         doc_title=doc_title,
                          predicted_label_x=predicted_label_x,
                          uncertainty_x=uncertainty_x,
                          predicted_label_y=predicted_label_y,

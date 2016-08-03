@@ -5,7 +5,7 @@ function useDocData(data) {
   Cookies.set('mdm_doc_number', data['doc_number'])
   $("#docText").text(data['document'])
   map.addDocument(new Document(data['doc_number'], data['document'],
-                               undefined, undefined))
+                               data['doc_title'], undefined, undefined))
   $("#waitContainer").hide()
 }
 
@@ -14,16 +14,18 @@ function useOldDocData(data) {
   Cookies.set('mdm_doc_number', data['doc_number'])
   $("#docText").text(data['document'])
   map.addDocument(new Document(data['doc_number'], data['document'],
-                            undefined, undefined))
+                               data['doc_title'], undefined, undefined))
   //Remake the dots that were there before the refresh
   for (var docNumber in data['labeled_docs']) {
     var doc = data['labeled_docs'][docNumber]
-    map.addDocument(new Document(docNumber, doc['text'], doc['x'], doc['y']))
+    map.addDocument(new Document(docNumber, doc['text'], doc['title'],
+                                 doc['x'], doc['y']))
     map.addDot(map.documents[docNumber].toDot())
   }
   for (var docNumber in data['predicted_docs']) {
     var doc = data['predicted_docs'][docNumber]
-    map.addDocument(new Document(docNumber, doc['text'], doc['x'], doc['y']))
+    map.addDocument(new Document(docNumber, doc['text'], doc['title'],
+                                 doc['x'], doc['y']))
     map.addDot(map.documents[docNumber].toDot())
   }
   $("#waitContainer").hide()
@@ -55,10 +57,8 @@ function checkForDots(event) {
 
 //Recursively checks for dots under the mouse
 function addLowerDocsToList(el, x, y, list) {
-  var docText = map.documents[el.id.slice(3)].text
-  var end = Math.min(docText.length, 97)
-  var listItem = "<p id='" + el.id + "listed' class='listedDoc'>" +
-                 docText.slice(0, end) + "..." + "</p>"
+  var docNum = el.id.slice(3)
+  var listItem = map.documents[docNum].toListEntry()
   $("#docList").append(listItem)
   $("#"+el.id).css('pointer-events', 'none')
   var nextEl = document.elementFromPoint(x, y)
@@ -137,7 +137,8 @@ function subMakePredictions(numPredictions) {
         var labelY = docs[i]['predicted_label_y']
         var docNum = docs[i]['doc_number']
         var docText = docs[i]['document']
-        map.addDocument(new Document(docNum, docText, labelX, labelY))
+        var docTitle = docs[i]['doc_title']
+        map.addDocument(new Document(docNum, docText, docTitle, labelX, labelY))
         map.addDot(map.documents[docNum].toDot())
         $("#waitContainer").hide()
       }

@@ -11,10 +11,15 @@ body {
   z-index: 2;
 }
 
+.listedButton {
+  color: black;
+}
+
 .listedDoc {
   color: white;
   border-bottom: 1px dashed white;
   padding-bottom: 5px;
+  margin: 5px;
 }
 
 .mapMeasure {

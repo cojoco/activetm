@@ -28,6 +28,11 @@ body {
   stroke-dasharray: 1, 2;
 }
 
+.modal-header {
+  border-bottom: none;
+  padding-bottom: 0px;
+}
+
 #docContainer {
   margin-top: 72vh;
   width: 100%;

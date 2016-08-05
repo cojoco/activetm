@@ -77,10 +77,9 @@ Document.prototype = {
                              '<p>This is the first tab ' + tab1Id + '</p>' +
                            '</div>' +
                            '<div id="' + tab2Id + '" class="tab-pane fade">' +
-                             '<p>This is the second tab ' + tab2Id + '</p>' +
+                             '<p>' + this.text + '</p>' +
                            '</div>' +
                            '<div id="' + tab3Id + '" class="tab-pane fade">' +
-                             '<p>This is the third tab ' + tab3Id + '</p>' +
                            '</div>' +
                          '</div>' +
                        '</div>' +
@@ -121,6 +120,11 @@ Document.prototype = {
 //    modal.append(modalOuter)
     //Stick the modal and tabs in the DOM
     $("#modals").append(modal)
+    var data = [{name: 'Topic 1', value: 0.4},
+                {name: 'Topic 2', value: 0.2},
+                {name: 'Topic 3', value: 0.3},
+                {name: 'Topic 4', value: 0.1}]
+    makePieChart(tab3Id, data)
     //Return a newly created list entry
     return $('<div>').attr('id', this.id + 'listed')
                    .attr('class', 'listedDoc')

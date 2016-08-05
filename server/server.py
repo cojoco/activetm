@@ -8,6 +8,7 @@ import threading
 import pickle
 import random
 import sys
+import numpy as np
 
 # This is ugly/dirty/hackish... Fix it if you like.
 # You could probably just install activetm.
@@ -21,7 +22,7 @@ from activetm import utils
 APP = flask.Flask(__name__, static_url_path='')
 
 def get_user_dict_on_start():
-    """Loads user data"""
+    """Load user data if server restarted"""
     # This maintains state if the server crashes
     try:
         last_state = open('last_state.pickle', 'rb')
@@ -37,7 +38,7 @@ def get_user_dict_on_start():
 
 
 def get_dataset():
-    """Gets the dataset from a pickle file in the local directory"""
+    """Get the dataset from a pickle file in the local directory"""
     with open('dataset.pickle', 'rb') as in_file:
         dataset = pickle.load(in_file)
         return dataset
@@ -69,7 +70,7 @@ ALL_DOC_IDS = [doc for doc in range(DATASET.num_docs)]
 
 
 def save_state():
-    """Saves the state of the server to a pickle file"""
+    """Save the state of the server to a pickle file"""
     last_state = {}
     last_state['USER_DICT'] = USER_DICT
     pickle.dump(last_state, open('last_state.pickle', 'wb'))
@@ -77,19 +78,19 @@ def save_state():
 
 @APP.route('/')
 def serve_landing_page():
-    """Serves the landing page for the Metadata Map UI"""
+    """Serve the landing page for the Metadata Map UI"""
     return flask.send_from_directory('static', 'index.html')
 
 
 @APP.route('/end')
 def serve_end():
-    """Serves the end page, which gets rid of cookies"""
+    """Serve the end page, which gets rid of cookies and deletes the user"""
     return flask.send_from_directory('static', 'end.html')
 
 
 @APP.route('/removeuser')
 def remove_user():
-    """Removes a user, called when a user goes to end.html"""
+    """Remove a user when that user goes to end.html"""
     uid = str(flask.request.headers.get('uuid'))
     # Remove the uid and all related information from the USER_DICT
     USER_DICT.pop(uid, None)
@@ -97,7 +98,7 @@ def remove_user():
 
 
 def build_model():
-    """Builds a model for a user"""
+    """Build a model for a user"""
     settings = {}
     settings['model'] = 'semi_ridge_anchor'
     settings['numtopics'] = 20
@@ -107,6 +108,7 @@ def build_model():
 
 
 def train_model(uid):
+    """Train the model if we have enough labeled data"""
     restarted = False
     with LOCK:
         # If uid is not in MODELS, it means the server restarted and we
@@ -129,12 +131,23 @@ def train_model(uid):
                 labels_two.append(label['y'])
             MODELS[uid][0].train(DATASET, labeled_doc_ids, labels_one, True)
             MODELS[uid][1].train(DATASET, labeled_doc_ids, labels_two, True)
+            # Get topics for each document, new ones if we retrained the model
+            for doc_number in USER_DICT[uid]['docs_with_labels'].keys():
+                doc_tokens = DATASET.doc_tokens(doc_number)
+                docws = MODELS[uid][0]._convert_vocab_space(doc_tokens)
+                topics = list(MODELS[uid][0]._predict_topics(0, docws))
+                USER_DICT[uid]['docs_with_labels'][doc_number]['topics'] = topics
+            for doc_number in USER_DICT[uid]['predicted_docs'].keys():
+                doc_tokens = DATASET.doc_tokens(doc_number)
+                docws = MODELS[uid][0]._convert_vocab_space(doc_tokens)
+                topics = list(MODELS[uid][0]._predict_topics(0, docws))
+                USER_DICT[uid]['predicted_docs'][doc_number]['topics'] = topics
             USER_DICT[uid]['training_complete'] = True
 
 
 @APP.route('/uuid')
 def get_uid():
-    """Sends a UUID to the client"""
+    """Send a UUID to the client"""
     uid = str(uuid.uuid4())
     data = {'id': uid}
     # Create a model here
@@ -154,31 +167,37 @@ def get_uid():
 
 @APP.route('/labeldoc', methods=['POST'])
 def label_doc():
-    """Receives the label for the previously sent document"""
+    """Receive the label for the previously sent document"""
     uid = str(flask.request.headers.get('uuid'))
     doc_number = int(flask.request.values.get('doc_number'))
     label_x = float(flask.request.values.get('label_x'))
     label_y = float(flask.request.values.get('label_y'))
     text = DATASET.doc_metadata(doc_number, 'text')
     title = DATASET.titles[doc_number]
+    topics = None
     with LOCK:
         if uid in USER_DICT:
             # If this endpoint was hit multiple times (say while the model was
             #   training), then we want to only act on the first request
             if doc_number in USER_DICT[uid]['docs_with_labels'].keys():
                 return flask.jsonify(user_id=uid)
+            if USER_DICT[uid]['training_complete']:
+                doc_tokens = DATASET.doc_tokens(doc_number)
+                docws = MODELS[uid][0]._convert_vocab_space(doc_tokens)
+                topics = list(MODELS[uid][0]._predict_topics(0, docws))
             USER_DICT[uid]['docs_with_labels'][doc_number] = {'x': label_x,
                                                               'y': label_y,
                                                               'text': text,
-                                                              'title': title}
+                                                              'title': title,
+                                                              'topics': topics}
             USER_DICT[uid]['unlabeled_doc_ids'].remove(doc_number)
     save_state()
-    return flask.jsonify(user_id=uid)
+    return flask.jsonify({'user_id': uid, 'topics': topics})
 
 
 @APP.route('/getdoc')
 def get_doc():
-    """Gets the next document for this user"""
+    """Get the next document for this user"""
     uid = str(flask.request.headers.get('uuid'))
     doc_number = -1
     document = ''
@@ -220,6 +239,7 @@ def get_doc():
 
 @APP.route('/train')
 def train_endpoint():
+    """Start training the user's model if needed"""
     uid = str(flask.request.headers.get('uuid'))
     if uid in USER_DICT:
         train_model(uid)
@@ -228,6 +248,7 @@ def train_endpoint():
 
 @APP.route('/istrained')
 def is_model_trained():
+    """Check if the user's model is trained"""
     uid = str(flask.request.headers.get('uuid'))
     trained = False
     if uid in USER_DICT:
@@ -269,7 +290,7 @@ def old_doc():
 
 @APP.route('/predictions')
 def make_predictions():
-    """Makes num_docs predictions and sends them to the client"""
+    """Make num_docs predictions and send them to the client"""
     uid = str(flask.request.headers.get('uuid'))
     num_docs = int(flask.request.headers.get('num_docs'))
     # These are the documents to send
@@ -279,16 +300,35 @@ def make_predictions():
         label_x = MODELS[uid][0].predict(doc)
         label_y = MODELS[uid][1].predict(doc)
         doc_text = DATASET.doc_metadata(doc_number, 'text')
+        doc_title = DATASET.titles[doc_number]
+        doc_tokens = DATASET.doc_tokens(doc_number)
+        docws = MODELS[uid][0]._convert_vocab_space(doc_tokens)
+        topics = list(MODELS[uid][0]._predict_topics(0, docws))
         send_docs[i] = {'document': doc_text,
                         'doc_number': doc_number,
+                        'doc_title': doc_title,
                         'predicted_label_x': label_x,
-                        'predicted_label_y': label_y}
+                        'predicted_label_y': label_y,
+                        'topics': topics}
         USER_DICT[uid]['predicted_docs'][doc_number] = {'x': label_x,
                                                         'y': label_y,
-                                                        'text': doc_text}
+                                                        'title': doc_title,
+                                                        'text': doc_text,
+                                                        'topics': topics}
         USER_DICT[uid]['unlabeled_doc_ids'].remove(doc_number)
     save_state()
     return flask.jsonify(documents=send_docs)
+
+
+@APP.route('/topics')
+def get_topics():
+    """Return the topics for each model"""
+    uid = str(flask.request.headers.get('Cookie'))[53:89]
+    doc_ids = list(USER_DICT[uid]['docs_with_labels'])
+    doc_tokens = DATASET.doc_tokens(doc_ids[0])
+    docws = MODELS[uid][0]._convert_vocab_space(doc_tokens)
+    topics = MODELS[uid][0]._predict_topics(0, docws)
+    return flask.jsonify({'topics':list(topics)})
 
 
 if __name__ == '__main__':

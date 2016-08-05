@@ -3,10 +3,13 @@
   <head>
     <meta charset="UTF-8">
     <title>Metadata Map</title>
+    <!--Begin libraries here-->
     <script src="https://code.jquery.com/jquery-2.2.4.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/ui/1.11.4/jquery-ui.min.js" integrity="sha256-xNjb53/rY+WmG+4L6tTl9m6PpqknWZvRt0rO1SRnJzw=" crossorigin="anonymous"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+    <script src="https://d3js.org/d3.v4.min.js"></script>
     <script src="scripts/js.cookie.js"></script>
+    <!--Begin custom scripts here-->
     <script src="scripts/doc.js"></script>
     <script src="scripts/dot.js"></script>
     <script src="scripts/map.js"></script>
@@ -40,5 +43,8 @@
       </div>
     </div>
     <div id="modals"></div>
+    <!--This script needs to be called at the end of the body because otherwise
+        D3 doesn't work correctly.-->
+    <script src="scripts/viz/pie.js"></script>
   </body>
 </html>

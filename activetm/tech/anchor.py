@@ -144,6 +144,9 @@ class AbstractAnchor(abstract.AbstractModel):
     def get_topics(self, pos):
         return self.topicses[pos]
 
+    def get_anchors(self, pos):
+        return self.anchorses[pos]
+
     def predict(self, doc):
         resultslist = []
         docws = self._convert_vocab_space(doc)

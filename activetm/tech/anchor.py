@@ -141,6 +141,9 @@ class AbstractAnchor(abstract.AbstractModel):
             predictor.fit(features, np.array(knownresp))
             self.predictors.append(predictor)
 
+    def get_topics(self, pos):
+        return self.topicses[pos]
+
     def predict(self, doc):
         resultslist = []
         docws = self._convert_vocab_space(doc)
